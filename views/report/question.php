@@ -8,8 +8,10 @@
 /** @var array $data */
 /** @var string|null $q */
 /** @var bool $canEdit */
+/** @var yii\data\Pagination|null $pagination */
 
 use app\models\Interpretation;
+use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -123,18 +125,7 @@ $canEdit = $canEdit && !$project->is_archived;
                                     <?php endif ?>
                                 <?php endforeach ?>
                                 <?php if ($canEdit): ?>
-                                    <?php $fid = "add-{$resp->id}-{$r}"; ?>
-                                    <a href="#" class="small no-print" data-toggle-target="#<?= $fid ?>"><i class="bi bi-plus"></i> เพิ่ม</a>
-                                    <?= Html::beginForm(['interpretation/create'], 'post', ['id' => $fid, 'class' => 'd-none mt-1 no-print']) ?>
-                                    <?= Html::hiddenInput('Interpretation[response_id]', $resp->id) ?>
-                                    <?= Html::hiddenInput('Interpretation[round]', $r) ?>
-                                    <?= Html::hiddenInput('returnUrl', Url::current(['#' => 'r' . $resp->id])) ?>
-                                    <textarea name="Interpretation[text]" class="form-control form-control-sm mb-1" rows="2" data-autosize placeholder="ประเด็น (Ctrl+Enter เพื่อบันทึก)"></textarea>
-                                    <div class="d-flex gap-1">
-                                        <?= Html::dropDownList('Interpretation[ipo]', null, Interpretation::ipoOptions(), ['class' => 'form-select form-select-sm', 'prompt' => '— IPO —']) ?>
-                                        <button class="btn btn-sm btn-primary">บันทึก</button>
-                                    </div>
-                                    <?= Html::endForm() ?>
+                                    <a href="#" class="small no-print" data-interp-add="<?= $resp->id ?>" data-round="<?= $r ?>"><i class="bi bi-plus"></i> เพิ่ม</a>
                                 <?php endif ?>
                             </td>
                         <?php endfor ?>
@@ -148,3 +139,14 @@ $canEdit = $canEdit && !$project->is_archived;
         </div>
     </div>
 <?php endforeach ?>
+
+<?php if ($pagination && $pagination->pageCount > 1): ?>
+    <div class="no-print d-flex align-items-center gap-3 flex-wrap">
+        <?= LinkPager::widget(['pagination' => $pagination]) ?>
+        <span class="small text-muted mb-3">หน้าละ 3 คำถาม · ส่งออก Excel ได้ครบทุกข้อ</span>
+    </div>
+<?php endif ?>
+
+<?php if ($canEdit): ?>
+    <?= $this->render('_interp_templates') ?>
+<?php endif ?>

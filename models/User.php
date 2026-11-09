@@ -57,7 +57,8 @@ class User extends ActiveRecord implements IdentityInterface
             [['username', 'email', 'prefix', 'first_name', 'last_name'], 'trim'],
             [['username', 'email'], 'default', 'value' => null],
             ['username', 'string', 'min' => 3, 'max' => 64],
-            ['username', 'match', 'pattern' => '/^[A-Za-z0-9_.\-@]+$/', 'message' => 'ใช้ได้เฉพาะ a-z, 0-9, _ . - @'],
+            // อนุญาตอักษรไทย/สระ/วรรณยุกต์ และช่องว่าง เพื่อให้ชื่อผู้ใช้จากระบบเดิมใช้ต่อได้
+            ['username', 'match', 'pattern' => '/^[\p{L}\p{M}\p{N}_.\-@ ]+$/u', 'message' => 'ใช้ได้เฉพาะตัวอักษร ตัวเลข ช่องว่าง และ _ . - @'],
             ['username', 'unique'],
             ['email', 'email'],
             ['email', 'unique'],

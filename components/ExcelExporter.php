@@ -50,8 +50,9 @@ class ExcelExporter
             foreach (array_values($def['widths'] ?? []) as $i => $w) {
                 $sheet->getColumnDimensionByColumn($i + 1)->setWidth($w);
             }
+            // ตั้งรูปแบบทั้งคอลัมน์ (ไม่ใช่ทีละเซลล์) เพื่อประหยัดหน่วยความจำเมื่อข้อมูลมาก
             $lastCol = $sheet->getHighestColumn();
-            $sheet->getStyle("A{$headerRow}:{$lastCol}" . ($row - 1))
+            $sheet->getStyle("A:{$lastCol}")
                 ->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
             $sheet->freezePane('A' . ($headerRow + 1));
         }

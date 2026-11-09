@@ -41,6 +41,13 @@ class ReportController extends ProjectScopedController
             ? $questions
             : array_values(array_filter($questions, fn($x) => $x->id == $questionId));
 
+        // โหมด "ทุกข้อ" บนหน้าจอ: แบ่งหน้าละ 3 คำถาม (Excel ยังส่งออกครบทุกข้อ)
+        $pagination = null;
+        if (!$export && count($selected) > 3) {
+            $pagination = new \yii\data\Pagination(['totalCount' => count($selected), 'pageSize' => 3]);
+            $selected = array_slice($selected, $pagination->offset, $pagination->limit);
+        }
+
         $data = [];
         foreach ($selected as $question) {
             $responses = Response::find()->alias('r')
@@ -70,6 +77,7 @@ class ReportController extends ProjectScopedController
             'round' => $round,
             'data' => $data,
             'q' => $q,
+            'pagination' => $pagination,
             'canEdit' => $project->canEdit($this->currentUser()),
         ]);
     }
@@ -109,50 +117,61 @@ class ReportController extends ProjectScopedController
     public function actionInformant($projectId, $export = null)
     {
         $project = $this->findProject($projectId);
-        $questions = $this->questions($project);
-        $informants = Informant::find()->with('group')
+        $questions = ArrayHelper::index($this->questions($project), 'id');
+        $query = Informant::find()->with('group')
             ->where(['project_id' => $project->id, 'is_deleted' => 0])
-            ->orderBy('code')->all();
+            ->orderBy(['code' => SORT_ASC, 'id' => SORT_ASC]);
 
-        $matrix = [];
-        foreach (Response::find()->with('option')
-                     ->where(['question_id' => ArrayHelper::getColumn($questions, 'id'), 'is_deleted' => 0])
-                     ->each(500) as $r) {
-            $q = null;
-            foreach ($questions as $qq) {
-                if ($qq->id === $r->question_id) {
-                    $q = $qq;
-                    break;
-                }
+        // ค่าคำตอบของผู้ให้ข้อมูลชุดหนึ่ง: [informant_id][question_id] => ข้อความ
+        $matrixFor = function (array $informantIds) use ($questions): array {
+            $matrix = [];
+            if (!$informantIds || !$questions) {
+                return $matrix;
             }
-            $r->populateRelation('question', $q);
-            $matrix[$r->informant_id][$r->question_id] = $r->getDisplayValue();
-        }
+            foreach (Response::find()->with('option')
+                         ->where(['informant_id' => $informantIds, 'question_id' => array_keys($questions), 'is_deleted' => 0])
+                         ->each(1000) as $r) {
+                $r->populateRelation('question', $questions[$r->question_id]);
+                $matrix[$r->informant_id][$r->question_id] = $r->getDisplayValue();
+            }
+            return $matrix;
+        };
 
         if ($export) {
+            ini_set('memory_limit', '512M');
             $rows = [];
-            foreach ($informants as $inf) {
-                $row = [$inf->code, $inf->age, $inf->group->name ?? ''];
-                foreach ($questions as $qq) {
-                    $row[] = $matrix[$inf->id][$qq->id] ?? '';
+            foreach ($query->batch(1000) as $chunk) {
+                $matrix = $matrixFor(ArrayHelper::getColumn($chunk, 'id'));
+                foreach ($chunk as $inf) {
+                    $row = [$inf->code, $inf->age, $inf->group->name ?? ''];
+                    foreach ($questions as $qid => $qq) {
+                        $row[] = $matrix[$inf->id][$qid] ?? '';
+                    }
+                    $rows[] = $row;
                 }
-                $rows[] = $row;
             }
             return ExcelExporter::send('informants-' . $project->id, [
                 'ผู้ให้ข้อมูล' => [
                     'title' => $project->title,
-                    'header' => array_merge(['รหัส', 'อายุ', 'กลุ่ม'], array_map(fn($x) => $x->title, $questions)),
+                    'header' => array_merge(['รหัส', 'อายุ', 'กลุ่ม'], array_map(fn($x) => $x->title, array_values($questions))),
                     'rows' => $rows,
                     'widths' => array_merge([14, 8, 14], array_fill(0, count($questions), 40)),
                 ],
             ]);
         }
 
+        $pagination = new \yii\data\Pagination([
+            'totalCount' => (clone $query)->count(),
+            'pageSize' => 100,
+        ]);
+        $informants = $query->offset($pagination->offset)->limit($pagination->limit)->all();
+
         return $this->render('informant', [
             'project' => $project,
-            'questions' => $questions,
+            'questions' => array_values($questions),
             'informants' => $informants,
-            'matrix' => $matrix,
+            'matrix' => $matrixFor(ArrayHelper::getColumn($informants, 'id')),
+            'pagination' => $pagination,
         ]);
     }
 

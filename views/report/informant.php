@@ -5,7 +5,9 @@
 /** @var app\models\Question[] $questions */
 /** @var app\models\Informant[] $informants */
 /** @var array $matrix */
+/** @var yii\data\Pagination $pagination */
 
+use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -14,7 +16,7 @@ $this->params['breadcrumbs'][] = ['label' => $project->title, 'url' => ['project
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="page-header">
-    <h1><?= $this->title ?> <span class="badge text-bg-light fs-6"><?= count($informants) ?> คน</span></h1>
+    <h1><?= $this->title ?> <span class="badge text-bg-light fs-6"><?= Yii::$app->formatter->asInteger($pagination->totalCount) ?> คน</span></h1>
     <a href="<?= Url::to(['informant', 'projectId' => $project->id, 'export' => 1]) ?>" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
 </div>
 
@@ -43,3 +45,6 @@ $this->params['breadcrumbs'][] = $this->title;
         </table>
     </div>
 </div>
+<?php if ($pagination->pageCount > 1): ?>
+    <div class="mt-3"><?= LinkPager::widget(['pagination' => $pagination]) ?></div>
+<?php endif ?>

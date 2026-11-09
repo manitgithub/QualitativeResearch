@@ -83,6 +83,13 @@ class LegacyController extends Controller
             return ExitCode::DATAERR;
         }
 
+        // ข้อมูลสัมภาษณ์บางรายการยาวมาก: เพิ่มหน่วยความจำและปิดการเก็บ log ทุก query ระหว่างนำเข้า
+        ini_set('memory_limit', '1024M');
+        foreach ([$this->db, $this->old] as $c) {
+            $c->enableLogging = false;
+            $c->enableProfiling = false;
+        }
+
         $start = microtime(true);
         $tx = $this->db->beginTransaction();
         try {
@@ -104,8 +111,12 @@ class LegacyController extends Controller
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
-            $this->stderr("\nยกเลิกการนำเข้าทั้งหมด: " . $e->getMessage() . "\n", Console::FG_RED);
-            $this->stderr($e->getTraceAsString() . "\n");
+            // ไม่แสดง SQL ที่ล้มเหลว เพราะอาจมีรหัสผ่านเดิม (plain text) อยู่ในค่าที่ insert
+            $msg = $e instanceof \yii\db\Exception
+                ? 'SQLSTATE ' . implode(' ', array_filter((array)$e->errorInfo, 'is_scalar'))
+                : strtok($e->getMessage(), "\n");
+            $this->stderr("\nยกเลิกการนำเข้าทั้งหมด (ไม่มีข้อมูลถูกบันทึก): {$msg}\n", Console::FG_RED);
+            $this->stderr(get_class($e) . ' @ ' . basename($e->getFile()) . ':' . $e->getLine() . "\n");
             return ExitCode::SOFTWARE;
         }
 
@@ -150,7 +161,7 @@ class LegacyController extends Controller
         if ($filter) {
             $filter($q);
         }
-        foreach ($q->each(2000, $this->old) as $row) {
+        foreach ($q->each(500, $this->old) as $row) {
             if (isset($done[$row['id']])) {
                 continue;
             }
@@ -162,7 +173,7 @@ class LegacyController extends Controller
             $data['legacy_id'] = (int)$row['id'];
             $cols ??= array_keys($data);
             $batch[] = array_values(array_merge(array_fill_keys($cols, null), $data));
-            if (count($batch) >= 1000) {
+            if (count($batch) >= 500) {
                 $this->db->createCommand()->batchInsert($newTable, $cols, $batch)->execute();
                 $inserted += count($batch);
                 $batch = [];
@@ -197,24 +208,87 @@ class LegacyController extends Controller
         return $v === '' ? null : $v;
     }
 
+    /**
+     * ระบบเดิมมีหลายแถวที่ใช้ LoginName เดียวกัน (สมัครซ้ำ) แต่เข้าระบบได้จริงแค่แถวเดียว
+     * จึงรวมเป็นบัญชีเดียว: ใช้แถวที่เข้าระบบบ่อยที่สุด (เท่ากันใช้ UserID น้อยสุด) เป็นหลัก
+     * แล้วแมป UserID ของแถวอื่นทั้งหมดมาที่บัญชีนั้น ข้อมูลโครงการ/ทีม/ประวัติจึงไม่หาย
+     *
+     * @return array<int,int> legacy UserID (ทุกแถว) => primary legacy UserID
+     */
+    private function userAliases(): array
+    {
+        $logins = in_array('dt_log', $this->old->schema->getTableNames(), true)
+            ? (new Query())->select(['n' => 'COUNT(*)', 'user'])->from('dt_log')->groupBy('user')->indexBy('user')->column($this->old)
+            : [];
+        $groups = [];
+        // จัดกลุ่มด้วย collation เดียวกับ unique index ของตาราง user (utf8mb4_unicode_ci ไม่สนตัวพิมพ์และวรรณยุกต์ไทย)
+        foreach ($this->loginKeys() as $id => $key) {
+            $groups[$key ?? ('#' . $id)][] = $id;
+        }
+        $alias = [];
+        foreach ($groups as $ids) {
+            usort($ids, fn($a, $b) => [-(int)($logins[$a] ?? 0), $a] <=> [-(int)($logins[$b] ?? 0), $b]);
+            foreach ($ids as $id) {
+                $alias[$id] = $ids[0];
+            }
+        }
+        return $alias;
+    }
+
+    /**
+     * @return array<int,?string> legacy UserID => คีย์เปรียบเทียบชื่อผู้ใช้ตาม collation ของ MySQL (null = ไม่มีชื่อ)
+     */
+    private function loginKeys(): array
+    {
+        static $keys = null;
+        if ($keys !== null) {
+            return $keys;
+        }
+        $rows = $this->old->createCommand(
+            "SELECT UserID, IF(TRIM(LoginName) = '' OR LoginName IS NULL, NULL,
+                HEX(WEIGHT_STRING(CONVERT(TRIM(LoginName) USING utf8mb4) COLLATE utf8mb4_unicode_ci))) k
+             FROM dt_userkey ORDER BY UserID"
+        )->queryAll();
+        $keys = [];
+        foreach ($rows as $r) {
+            $keys[(int)$r['UserID']] = $r['k'];
+        }
+        return $keys;
+    }
+
+    private function usernameKey(string $username): string
+    {
+        return (string)$this->db->createCommand(
+            'SELECT HEX(WEIGHT_STRING(CONVERT(:u USING utf8mb4) COLLATE utf8mb4_unicode_ci))', [':u' => $username]
+        )->queryScalar();
+    }
+
     private function importUsers(): array
     {
         $now = time();
-        $taken = (new Query())->select('username')->from('{{%user}}')->where(['legacy_id' => null])
-            ->andWhere(['not', ['username' => null]])->column($this->db);
-        $taken = array_flip(array_map('mb_strtolower', $taken));
+        $alias = $this->userAliases();
+        $taken = [];
+        foreach ((new Query())->select('username')->from('{{%user}}')->where(['legacy_id' => null])
+                     ->andWhere(['not', ['username' => null]])->column($this->db) as $u) {
+            $taken[$this->usernameKey($u)] = true;
+        }
 
-        return $this->copy('ผู้ใช้ (dt_userkey)', 'dt_userkey', '{{%user}}', function ($r) use ($now, &$taken) {
+        $merged = 0;
+        $map = $this->copy('ผู้ใช้ (dt_userkey)', 'dt_userkey', '{{%user}}', function ($r) use ($now, &$taken, $alias, &$merged) {
+            if ($alias[(int)$r['UserID']] !== (int)$r['UserID']) {
+                $merged++;
+                return null;    // แถวซ้ำ: รวมเข้ากับบัญชีหลัก
+            }
             $username = $this->str($r['LoginName'] ?? null);
             if ($username !== null) {
-                $base = preg_replace('/[^A-Za-z0-9_.\-@]/', '', $username) ?: 'user' . $r['UserID'];
+                $base = mb_substr(preg_replace('/[^\p{L}\p{M}\p{N}_.\-@ ]/u', '', $username), 0, 64) ?: 'user' . $r['UserID'];
                 $username = $base;
                 $i = 2;
-                while (isset($taken[mb_strtolower($username)])) {
+                while (isset($taken[$this->usernameKey($username)])) {
                     $username = $base . '_' . $i++;
-                    $this->warnings[] = "ชื่อผู้ใช้ {$base} ซ้ำ เปลี่ยนเป็น {$username}";
+                    $this->warnings[] = "ชื่อผู้ใช้ {$base} มีอยู่แล้วในระบบใหม่ เปลี่ยนเป็น {$username}";
                 }
-                $taken[mb_strtolower($username)] = true;
+                $taken[$this->usernameKey($username)] = true;
             }
             $prefix = $this->str($r['PrefixID'] ?? null);
             return [
@@ -230,6 +304,18 @@ class LegacyController extends Controller
                 'updated_at' => $now,
             ];
         }, fn(Query $q) => $q->orderBy('UserID')->select(['*', 'id' => 'UserID']));
+
+        // แมปแถวซ้ำไปยังบัญชีหลัก
+        foreach ($alias as $legacyId => $primary) {
+            if (!isset($map[$legacyId]) && isset($map[$primary])) {
+                $map[$legacyId] = $map[$primary];
+            }
+        }
+        $dupes = count(array_filter($alias, fn($p, $id) => $p !== $id, ARRAY_FILTER_USE_BOTH));
+        if ($dupes) {
+            $this->stdout(sprintf("  รวมบัญชีที่ใช้ชื่อผู้ใช้ซ้ำ %d แถว เข้ากับบัญชีหลัก\n", $dupes), Console::FG_YELLOW);
+        }
+        return $map;
     }
 
     private function importMethods(array $existing): array

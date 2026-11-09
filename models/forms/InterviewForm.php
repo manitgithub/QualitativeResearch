@@ -75,7 +75,9 @@ class InterviewForm extends Model
     {
         $ok = $this->informant->validate();
 
-        $dup = Informant::find()
+        // ตรวจรหัสซ้ำเฉพาะตอนสร้างใหม่หรือเปลี่ยนรหัส (ข้อมูลเดิมบางโครงการมีรหัสซ้ำอยู่แล้ว)
+        $codeChanged = $this->informant->isNewRecord || $this->informant->isAttributeChanged('code');
+        $dup = $codeChanged && Informant::find()
             ->where(['project_id' => $this->project->id, 'code' => $this->informant->code, 'is_deleted' => 0])
             ->andFilterWhere(['<>', 'id', $this->informant->id])
             ->exists();

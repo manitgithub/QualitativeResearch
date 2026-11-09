@@ -1,17 +1,14 @@
 <?php
 
 /**
- * ประเด็น 1 รายการ พร้อมฟอร์มแก้ไขแบบ inline
+ * ประเด็น 1 รายการ (ฟอร์มแก้ไขสร้างด้วย JS จาก _interp_templates เมื่อกดแก้ไข เพื่อให้หน้าที่มีข้อมูลมากเบา)
  *
  * @var yii\web\View $this
  * @var app\models\Interpretation $it
  * @var bool $canEdit
  */
 
-use app\models\Interpretation;
 use yii\helpers\Html;
-
-$editId = 'edit-i' . $it->id;
 ?>
 <div class="interp-item round-<?= $it->round ?>">
     <div class="d-flex justify-content-between gap-2">
@@ -21,21 +18,10 @@ $editId = 'edit-i' . $it->id;
         </div>
         <?php if ($canEdit): ?>
             <div class="actions text-nowrap no-print">
-                <a href="#" class="text-secondary" data-toggle-target="#<?= $editId ?>" title="แก้ไข"><i class="bi bi-pencil"></i></a>
-                <?= Html::a('<i class="bi bi-trash"></i>', ['interpretation/delete', 'id' => $it->id], [
-                    'class' => 'text-danger ms-1', 'title' => 'ลบ',
-                    'data' => ['method' => 'post', 'confirm' => 'ลบประเด็นนี้?'],
-                ]) ?>
+                <a href="#" class="text-secondary" title="แก้ไข"
+                   data-interp-edit="<?= $it->id ?>" data-text="<?= Html::encode($it->text) ?>" data-ipo="<?= Html::encode($it->ipo) ?>"><i class="bi bi-pencil"></i></a>
+                <a href="#" class="text-danger ms-1" title="ลบ" data-interp-delete="<?= $it->id ?>"><i class="bi bi-trash"></i></a>
             </div>
         <?php endif ?>
     </div>
-    <?php if ($canEdit): ?>
-        <?= Html::beginForm(['interpretation/update', 'id' => $it->id], 'post', ['id' => $editId, 'class' => 'd-none mt-2']) ?>
-        <textarea name="Interpretation[text]" class="form-control form-control-sm mb-1" rows="2" data-autosize><?= Html::encode($it->text) ?></textarea>
-        <div class="d-flex gap-1">
-            <?= Html::dropDownList('Interpretation[ipo]', $it->ipo, Interpretation::ipoOptions(), ['class' => 'form-select form-select-sm', 'prompt' => '— IPO —']) ?>
-            <button class="btn btn-sm btn-primary">บันทึก</button>
-        </div>
-        <?= Html::endForm() ?>
-    <?php endif ?>
 </div>
