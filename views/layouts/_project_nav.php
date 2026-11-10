@@ -32,6 +32,9 @@ $sections = [
         ['Input-Process-Output', 'bi-arrow-right-square', ['/report/ipo'] + $p, ['report/ipo']],
         ['Conceptual map', 'bi-bounding-box', ['/concept/index'] + $p, ['concept/index']],
     ],
+    'ออกเล่ม' => [
+        ['เล่มรายงาน / บทวิเคราะห์', 'bi-journal-text', ['/book/index'] + $p, ['book/index']],
+    ],
     'ตั้งค่า' => $canManage ? [
         ['แก้ไขโครงการ', 'bi-pencil-square', ['/project/update', 'id' => $project->id], ['project/update']],
         ['ทีมงานและกลุ่ม', 'bi-people', ['/project/members', 'id' => $project->id], ['project/members']],

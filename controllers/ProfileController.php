@@ -42,6 +42,9 @@ class ProfileController extends Controller
         return $this->render('index', [
             'profile' => $profile,
             'clients' => Yii::$app->authClientCollection->getClients(),
+            'balance' => \app\components\ai\Credits::balance($user->id),
+            'ledger' => \app\models\CreditLedger::find()->with('job')->where(['user_id' => $user->id])
+                ->orderBy(['id' => SORT_DESC])->limit(30)->all(),
         ]);
     }
 

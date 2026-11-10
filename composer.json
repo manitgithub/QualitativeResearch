@@ -19,7 +19,8 @@
         "yiisoft/yii2-bootstrap5": "~2.0.2",
         "yiisoft/yii2-symfonymailer": "~2.0.3",
         "yiisoft/yii2-authclient": "^2.2",
-        "phpoffice/phpspreadsheet": "^5.11"
+        "phpoffice/phpspreadsheet": "^5.11",
+        "maennchen/zipstream-php": "^2.4"
     },
     "require-dev": {
         "codeception/c3": "^2.8",

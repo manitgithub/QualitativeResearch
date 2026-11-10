@@ -41,3 +41,20 @@ tests/_support/_generated
 /web/assets/*
 !/web/assets/.gitignore
 /web/uploads/
+
+# ระบบเดิม: log, runtime, ฐานข้อมูลตัวอย่าง และ config ที่มีรหัสผ่าน (เก็บไว้ในเครื่องเท่านั้น)
+/old/protected/runtime/
+/old/protected/data/*.db
+/old/protected/config/main.php
+/old/protected/config/database.php
+
+# ไฟล์ที่อาจมีข้อมูลจริงหรือความลับ ห้าม commit ทุกที่
+*.sql.gz
+*.dump
+*.log
+*.sqlite
+*.db
+.env
+.env.*
+/runtime/deploy/
+/runtime/backup/

@@ -1,0 +1,26 @@
+# ใช้เมื่อเปลี่ยน Document root ของโฮสติ้งให้ชี้ไปที่ web/ ไม่ได้ (อัปโหลดทั้งโปรเจคผ่าน FTP)
+# ทุก request ถูกส่งเข้าโฟลเดอร์ web/ และบล็อกไฟล์/โฟลเดอร์อื่นของโปรเจคทั้งหมด
+#
+# ⚠️ ถ้าโฮสติ้งใช้ nginx ส่งไฟล์ static เอง (Plesk: "Serve static files directly by nginx")
+#    nginx จะไม่อ่านไฟล์นี้สำหรับไฟล์อย่าง .sql .json .log — ต้องปิดตัวเลือกนั้น หรือเปลี่ยน Document root เป็น web/
+
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1) บล็อกโฟลเดอร์และไฟล์ของโปรเจคที่ไม่ใช่หน้าเว็บ (เผื่อ rewrite ข้อ 2 ไม่ทำงาน)
+    RewriteRule ^(runtime|config|vendor|tests|old|docs|commands|controllers|models|views|components|migrations|mail|widgets)(/|$) - [F,L]
+    RewriteRule ^(composer\.(json|lock)|yii|yii\.bat|codeception\.yml|README\.md|requirements\.php|c3\.php|phpcs\.xml\.dist|phpstan\.neon)$ - [F,L]
+    RewriteRule (^|/)\. - [F,L]
+
+    # 2) ส่งทุกอย่างเข้า web/ (URL ที่ผู้ใช้เห็นไม่มี /web)
+    RewriteCond %{REQUEST_URI} !^/web/
+    RewriteRule ^(.*)$ web/$1 [L]
+</IfModule>
+
+# สำรอง กรณีไม่มี mod_rewrite: ปฏิเสธไฟล์สำคัญโดยตรง
+<FilesMatch "\.(sql|gz|log|lock|json|yml|md|neon|dist|bak)$">
+    Require all denied
+</FilesMatch>

@@ -73,14 +73,19 @@ class ExcelExporter
         return $response;
     }
 
-    private static function memoryLimitBytes(): int
+    /**
+     * ค่า memory_limit เป็นไบต์ (float: PHP 32-bit มี int สูงสุด ~2 GB การ shift บิตจะล้นเป็นค่าติดลบ)
+     */
+    private static function memoryLimitBytes(): float
     {
         $v = trim((string)ini_get('memory_limit'));
         if ($v === '-1') {
-            return PHP_INT_MAX;
+            return INF;
         }
-        $n = (int)$v;
-        return match (strtolower(substr($v, -1))) { 'g' => $n << 30, 'm' => $n << 20, 'k' => $n << 10, default => $n };
+        $n = (float)$v;
+        return match (strtolower(substr($v, -1))) {
+            'g' => $n * 1073741824, 'm' => $n * 1048576, 'k' => $n * 1024, default => $n,
+        };
     }
 
     private static function safeSheetName(string $name, array &$used): string

@@ -77,7 +77,19 @@ class AuthHandlerTest extends \Codeception\Test\Unit
     {
         Factory::admin();
         Yii::$app->params['socialSignupRequiresApproval'] = false;
+        Yii::$app->params['ai.welcomeCredits'] = 5;
         verify($this->handle('line', ['id' => 'U2'])->success)->true();
+        // เปิดใช้งานทันที → ได้เครดิตต้อนรับ
+        verify(\app\components\ai\Credits::balance((int)Yii::$app->user->id))->equals(5);
+    }
+
+    public function testPendingSignupGetsNoWelcomeCreditsYet()
+    {
+        Factory::admin();
+        Yii::$app->params['ai.welcomeCredits'] = 5;
+        $this->handle('line', ['id' => 'U3']);
+        $u = UserAuth::findOne(['source' => 'line', 'source_id' => 'U3'])->user;
+        verify(\app\components\ai\Credits::balance($u->id))->equals(0);
     }
 
     public function testVerifiedEmailLinksToExistingUser()

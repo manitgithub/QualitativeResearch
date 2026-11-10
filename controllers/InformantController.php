@@ -94,6 +94,8 @@ class InformantController extends ProjectScopedController
             ->with(['question', 'option', 'interpretations'])
             ->where(['informant_id' => $informant->id, 'flagDel' => 0])
             ->all();
+        // คำตอบของคำถามที่ถูกลบแล้ว: relation question เป็น null (soft delete ซ่อนไว้) — ตัดออกก่อนเรียง
+        $responses = array_values(array_filter($responses, fn($r) => $r->question !== null));
         usort($responses, fn($a, $b) => [$a->question->category !== 'demographic', $a->question->sort_order, $a->question_id]
             <=> [$b->question->category !== 'demographic', $b->question->sort_order, $b->question_id]);
 
@@ -105,7 +107,7 @@ class InformantController extends ProjectScopedController
         return $this->render('view', [
             'project' => $project,
             'informant' => $informant,
-            'responses' => array_values(array_filter($responses, fn($r) => !$r->question->flagDel)),
+            'responses' => $responses,
             'prevId' => $pos > 0 ? $ids[$pos - 1] : null,
             'nextId' => $pos !== false && $pos < count($ids) - 1 ? $ids[$pos + 1] : null,
             'canEdit' => $project->canEdit($this->currentUser()),

@@ -2,7 +2,10 @@
 
 namespace app\controllers;
 
+use app\components\ai\AiException;
+use app\components\ai\Credits;
 use app\components\UserMerger;
+use app\models\CreditLedger;
 use app\models\LoginLog;
 use app\models\User;
 use app\models\UserAuth;
@@ -33,7 +36,7 @@ class UserController extends Controller
             ],
             'verbs' => [
                 'class' => VerbFilter::class,
-                'actions' => ['approve' => ['POST'], 'reject' => ['POST'], 'unlink' => ['POST']],
+                'actions' => ['approve' => ['POST'], 'reject' => ['POST'], 'unlink' => ['POST'], 'credit' => ['POST']],
             ],
         ];
     }
@@ -69,6 +72,9 @@ class UserController extends Controller
     {
         $model = new User(['status' => User::STATUS_ACTIVE, 'role' => User::ROLE_USER]);
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            if ((int)$model->status === User::STATUS_ACTIVE) {
+                Credits::welcome($model->id);
+            }
             Yii::$app->session->setFlash('success', 'เพิ่มผู้ใช้แล้ว');
             return $this->redirect(['index']);
         }
@@ -90,7 +96,12 @@ class UserController extends Controller
             }
         }
         $logs = LoginLog::find()->where(['user_id' => $model->id])->orderBy(['id' => SORT_DESC])->limit(20)->all();
-        return $this->render('form', ['model' => $model, 'logs' => $logs]);
+        return $this->render('form', [
+            'model' => $model,
+            'logs' => $logs,
+            'balance' => Credits::balance($model->id),
+            'ledger' => CreditLedger::find()->with('job')->where(['user_id' => $model->id])->orderBy(['id' => SORT_DESC])->limit(20)->all(),
+        ]);
     }
 
     /**
@@ -115,6 +126,7 @@ class UserController extends Controller
             Yii::$app->session->setFlash('success', 'อนุมัติและรวมเข้ากับบัญชีเดิมของ ' . $into->getFullName() . ' แล้ว');
         } else {
             $model->updateAttributes(['status' => User::STATUS_ACTIVE]);
+            Credits::welcome($model->id);
             Yii::$app->session->setFlash('success', 'อนุมัติ ' . $model->getFullName() . ' เป็นผู้ใช้ใหม่แล้ว');
         }
         return $this->redirect(['index']);
@@ -146,6 +158,23 @@ class UserController extends Controller
         $model->generateAuthKey();      // ตัด session "จดจำการเข้าระบบ" เดิม
         $model->save(false, ['auth_key', 'updated_at']);
         Yii::$app->session->setFlash('success', 'ยกเลิกการผูกบัญชีแล้ว');
+        return $this->redirect(['update', 'id' => $model->id]);
+    }
+
+    /**
+     * เติม (+) หรือหัก (-) เครดิต AI ของผู้ใช้
+     */
+    public function actionCredit($id)
+    {
+        $model = $this->findModel($id);
+        $amount = (int)Yii::$app->request->post('amount');
+        $note = trim((string)Yii::$app->request->post('note')) ?: null;
+        try {
+            $after = Credits::grant($model->id, $amount, $note, (int)Yii::$app->user->id);
+            Yii::$app->session->setFlash('success', ($amount > 0 ? "เติม {$amount}" : 'หัก ' . -$amount) . " เครดิตแล้ว คงเหลือ {$after} เครดิต");
+        } catch (AiException $e) {
+            Yii::$app->session->setFlash('error', $e->getMessage());
+        }
         return $this->redirect(['update', 'id' => $model->id]);
     }
 

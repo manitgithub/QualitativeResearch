@@ -108,4 +108,23 @@ class SoftDeleteCest
         $I->amOnRoute('project/view', ['id' => $p->id]);
         $I->seeResponseCodeIs(403);
     }
+
+    /** ลบคำถามแล้ว หน้าผู้ให้ข้อมูลที่เคยตอบคำถามนั้นต้องยังเปิดได้ (เคย error: property "flagDel" on null) */
+    public function informantPageSurvivesDeletedQuestion(FunctionalTester $I)
+    {
+        $owner = Factory::user();
+        $p = Factory::project($owner);
+        $keep = Factory::question($p, ['title' => 'คำถามที่ยังอยู่']);
+        $gone = Factory::question($p, ['title' => 'คำถามที่ถูกลบ']);
+        $inf = Factory::informant($p, 'P01');
+        Factory::response($inf, $keep, 'คำตอบที่ยังอยู่');
+        Factory::response($inf, $gone, 'คำตอบของคำถามที่ถูกลบ');
+        $gone->delete();
+
+        $I->amLoggedInAs($owner);
+        $I->amOnRoute('informant/view', ['id' => $inf->id]);
+        $I->seeResponseCodeIs(200);
+        $I->see('คำตอบที่ยังอยู่');
+        $I->dontSee('คำตอบของคำถามที่ถูกลบ');
+    }
 }

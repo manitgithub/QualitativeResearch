@@ -17,6 +17,10 @@ use yii\db\ActiveRecord;
  * @property bool $is_output
  * @property bool $is_problem
  * @property bool $is_success
+ * @property string $source  human / ai / ai_edited
+ * @property bool $ai_pending  1 = ข้อเสนอจาก AI รอรับ
+ * @property string|null $members  JSON ประเด็นที่เป็นที่มา
+ * @property int|null $ai_job_id
  * @property int|null $legacy_id
  * @property int $created_at
  * @property int $updated_at
@@ -55,6 +59,22 @@ class Concept extends ActiveRecord
             'is_problem' => 'ปัญหา/อุปสรรค',
             'is_success' => 'ปัจจัยความสำเร็จ',
         ];
+    }
+
+    /** @return string[] */
+    public function getMemberList(): array
+    {
+        $m = $this->members ? json_decode($this->members, true) : [];
+        return is_array($m) ? $m : [];
+    }
+
+    /** แก้ชื่อแนวคิดที่ AI เสนอ → บันทึกว่านักวิจัยแก้แล้ว */
+    public function beforeSave($insert)
+    {
+        if (!$insert && $this->source === Interpretation::SOURCE_AI && $this->isAttributeChanged('name')) {
+            $this->source = Interpretation::SOURCE_AI_EDITED;
+        }
+        return parent::beforeSave($insert);
     }
 
     public static function flagColumns(): array

@@ -14,6 +14,7 @@ use yii\helpers\Html;
     <div class="d-flex justify-content-between gap-2">
         <div>
             <?= Html::encode($it->text) ?>
+            <?php if ($it->isFromAi()): ?><i class="bi bi-stars text-primary small" title="<?= $it->source === 'ai' ? 'ประเด็นจาก AI' : 'ประเด็นจาก AI (นักวิจัยแก้ไขแล้ว)' ?>"></i><?php endif ?>
             <?php if ($it->ipo): ?><span class="badge text-bg-secondary ipo-badge"><?= $it->ipo ?></span><?php endif ?>
         </div>
         <?php if ($canEdit): ?>

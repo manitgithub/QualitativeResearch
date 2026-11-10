@@ -21,6 +21,7 @@ use yii\db\ActiveRecord;
  * @property int $round
  * @property string|null $ipo
  * @property string $text
+ * @property string $source  human / ai / ai_edited
  * @property bool $flagDel
  * @property int|null $created_by
  * @property int|null $legacy_id
@@ -37,6 +38,10 @@ class Interpretation extends ActiveRecord
     public const IPO_INPUT = 'input';
     public const IPO_PROCESS = 'process';
     public const IPO_OUTPUT = 'output';
+
+    public const SOURCE_HUMAN = 'human';
+    public const SOURCE_AI = 'ai';
+    public const SOURCE_AI_EDITED = 'ai_edited';
 
     public static function tableName()
     {
@@ -60,6 +65,8 @@ class Interpretation extends ActiveRecord
             ['round', 'in', 'range' => array_keys(self::roundOptions())],
             ['ipo', 'in', 'range' => array_keys(self::ipoOptions())],
             ['ipo', 'default', 'value' => null],
+            ['source', 'in', 'range' => [self::SOURCE_HUMAN, self::SOURCE_AI, self::SOURCE_AI_EDITED]],
+            ['source', 'default', 'value' => self::SOURCE_HUMAN],
             ['response_id', 'exist', 'targetClass' => Response::class,
                 'targetAttribute' => ['response_id' => 'id', 'question_id' => 'question_id']],
         ];
@@ -91,6 +98,20 @@ class Interpretation extends ActiveRecord
             self::IPO_PROCESS => 'Process',
             self::IPO_OUTPUT => 'Output',
         ];
+    }
+
+    public function isFromAi(): bool
+    {
+        return in_array($this->source, [self::SOURCE_AI, self::SOURCE_AI_EDITED], true);
+    }
+
+    /** แก้ข้อความประเด็นที่มาจาก AI → บันทึกว่านักวิจัยแก้แล้ว */
+    public function beforeSave($insert)
+    {
+        if (!$insert && $this->source === self::SOURCE_AI && $this->isAttributeChanged('text')) {
+            $this->source = self::SOURCE_AI_EDITED;
+        }
+        return parent::beforeSave($insert);
     }
 
     public function getQuestion()

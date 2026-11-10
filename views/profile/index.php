@@ -3,6 +3,8 @@
 /** @var yii\web\View $this */
 /** @var app\models\User $profile */
 /** @var yii\authclient\ClientInterface[] $clients */
+/** @var int $balance */
+/** @var app\models\CreditLedger[] $ledger */
 
 use app\models\UserAuth;
 use yii\bootstrap5\ActiveForm;
@@ -72,5 +74,14 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?php endforeach ?>
             </ul>
         </div>
+        <?php if (\app\components\ai\InterpretationSuggester::isConfigured()): ?>
+            <div class="card mt-3" id="credits">
+                <div class="card-header"><i class="bi bi-stars"></i> เครดิต AI</div>
+                <?= $this->render('/credit/_history', ['balance' => $balance, 'ledger' => $ledger]) ?>
+                <div class="card-footer small text-muted">
+                    ต้องการเติมเครดิต: โอนผ่านเมนู <i class="bi bi-cup-hot"></i> เลี้ยงกาแฟ แล้วแจ้งผู้ดูแลระบบพร้อมสลิป
+                </div>
+            </div>
+        <?php endif ?>
     </div>
 </div>

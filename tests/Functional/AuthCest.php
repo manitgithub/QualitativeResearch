@@ -15,10 +15,14 @@ class AuthCest
 
     public function guestIsRedirectedToLogin(FunctionalTester $I)
     {
-        foreach (['site/index', 'project/create', 'user/index', 'profile/index'] as $route) {
+        foreach (['project/create', 'user/index', 'profile/index', 'site/docs'] as $route) {
             $I->amOnRoute($route);
             $I->seeInCurrentUrl('site%2Flogin');
         }
+        // หน้าแรกของผู้ที่ยังไม่เข้าระบบ = หน้าแนะนำระบบ (ไม่ใช่รายการโครงการ)
+        $I->amOnRoute('site/index');
+        $I->see('ระบบทำอะไรได้บ้าง');
+        $I->dontSee('โครงการของฉัน', 'h1');
     }
 
     public function loginPageShowsGoogleAndLine(FunctionalTester $I)
@@ -37,7 +41,7 @@ class AuthCest
         $I->dontSeeElement('#login-form');
         $I->sendAjaxPostRequest('/index-test.php?r=site%2Flogin', ['LoginForm' => ['username' => 'bob', 'password' => 'anything']]);
         verify(\Yii::$app->user->isGuest)->true();
-        $I->amOnRoute('site/index');
+        $I->amOnRoute('profile/index');
         $I->seeInCurrentUrl('site%2Flogin');
     }
 
@@ -47,7 +51,7 @@ class AuthCest
         $I->amOnRoute('site/logout');
         $I->seeResponseCodeIs(405);
         $I->sendAjaxPostRequest('/index-test.php?r=site%2Flogout');
-        $I->amOnRoute('site/index');
+        $I->amOnRoute('profile/index');
         $I->seeInCurrentUrl('site%2Flogin');
     }
 

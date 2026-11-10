@@ -24,6 +24,11 @@ $this->params['breadcrumbs'][] = $this->title;
         <div class="row">
             <div class="col-sm-6"><?= $form->field($model, 'started_on')->input('date') ?></div>
         </div>
+        <?php if (\app\components\ai\InterpretationSuggester::isConfigured()): ?>
+            <?= $form->field($model, 'ai_enabled')->checkbox()
+                ->hint('เมื่อเปิด ระบบจะส่ง <b>ชื่อโครงการ คำถาม และข้อความคำตอบ</b> (ไม่ส่งชื่อ อายุ หรือหมายเหตุของผู้ให้ข้อมูล) ไปยังผู้ให้บริการ AI ภายนอก
+                    ควรเปิดเฉพาะเมื่อใบยินยอม/การรับรองจริยธรรมการวิจัยครอบคลุมการประมวลผลลักษณะนี้') ?>
+        <?php endif ?>
         <div class="d-flex gap-2">
             <?= Html::submitButton('<i class="bi bi-check-lg"></i> บันทึก', ['class' => 'btn btn-primary']) ?>
             <a href="<?= $model->isNewRecord ? Url::home() : Url::to(['view', 'id' => $model->id]) ?>" class="btn btn-outline-secondary">ยกเลิก</a>

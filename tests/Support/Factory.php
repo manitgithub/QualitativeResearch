@@ -16,6 +16,7 @@ use Yii;
 final class Factory
 {
     private const TABLES = [
+        'report_section', 'ai_suggestion', 'credit_ledger', 'ai_job', 'credit_wallet',
         'interpretation', 'response', 'informant', 'question_option', 'question', 'concept',
         'informant_group', 'project_member', 'project', 'login_log', 'user_auth', 'user',
     ];

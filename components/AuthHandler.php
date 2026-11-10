@@ -2,6 +2,7 @@
 
 namespace app\components;
 
+use app\components\ai\Credits;
 use app\models\LoginLog;
 use app\models\User;
 use app\models\UserAuth;
@@ -138,6 +139,9 @@ class AuthHandler
         if (!$user->save()) {
             $this->message = 'สร้างบัญชีไม่สำเร็จ: ' . implode(' ', $user->getFirstErrors());
             return null;
+        }
+        if ((int)$user->status === User::STATUS_ACTIVE) {
+            Credits::welcome($user->id);
         }
         return $user;
     }

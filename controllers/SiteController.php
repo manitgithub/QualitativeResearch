@@ -18,7 +18,9 @@ class SiteController extends Controller
             'access' => [
                 'class' => AccessControl::class,
                 'rules' => [
-                    ['allow' => true, 'actions' => ['login', 'auth', 'error', 'logout'], 'roles' => ['?', '@']],
+                    ['allow' => true, 'actions' => ['login', 'auth', 'error', 'logout', 'welcome'], 'roles' => ['?', '@']],
+                    // หน้าแรก: ยังไม่เข้าระบบ = หน้าแนะนำระบบ, เข้าระบบแล้ว = โครงการของฉัน
+                    ['allow' => true, 'actions' => ['index'], 'roles' => ['?']],
                     ['allow' => true, 'roles' => ['@']],
                 ],
             ],
@@ -32,7 +34,8 @@ class SiteController extends Controller
     public function actions()
     {
         return [
-            'error' => ['class' => \yii\web\ErrorAction::class],
+            // หน้า error ใช้ layout เรียบง่าย (ไม่มีเมนู/เครดิต) — ถ้าเมนูหลักพัง หน้า error ยังแสดงได้
+            'error' => ['class' => \yii\web\ErrorAction::class, 'layout' => 'blank'],
             'auth' => [
                 'class' => AuthAction::class,
                 'successCallback' => [$this, 'onAuthSuccess'],
@@ -69,6 +72,9 @@ class SiteController extends Controller
      */
     public function actionIndex($archived = 0, $q = null)
     {
+        if (Yii::$app->user->isGuest) {
+            return $this->actionWelcome();
+        }
         /** @var \app\models\User $user */
         $user = Yii::$app->user->identity;
         $q = trim((string)$q);
@@ -124,6 +130,33 @@ class SiteController extends Controller
         }
         $this->layout = 'blank';
         return $this->render('login', ['clients' => Yii::$app->authClientCollection->getClients()]);
+    }
+
+    /**
+     * หน้าแนะนำระบบ (สาธารณะ) พร้อมสถิติการใช้งานจริง
+     */
+    public function actionWelcome()
+    {
+        $this->layout = 'landing';
+        $stats = Yii::$app->cache->getOrSet('welcome-stats', function () {
+            $db = Yii::$app->db;
+            $count = fn(string $sql) => (int)$db->createCommand($sql)->queryScalar();
+            return [
+                'users' => $count('SELECT COUNT(*) FROM {{%user}} WHERE flagDel = 0 AND status = 10'),
+                'projects' => $count('SELECT COUNT(*) FROM {{%project}} WHERE flagDel = 0'),
+                'informants' => $count('SELECT COUNT(*) FROM {{%informant}} WHERE flagDel = 0'),
+                'issues' => $count('SELECT COUNT(*) FROM {{%interpretation}} WHERE flagDel = 0'),
+            ];
+        }, 600);
+        return $this->render('welcome', ['stats' => $stats]);
+    }
+
+    /**
+     * คู่มือการใช้งาน
+     */
+    public function actionDocs()
+    {
+        return $this->render('docs');
     }
 
     public function actionLogout()

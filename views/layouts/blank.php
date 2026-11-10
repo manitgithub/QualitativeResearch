@@ -15,9 +15,10 @@ $this->render('_head');
     <?php $this->head() ?>
     <title><?= Html::encode($this->title ? $this->title . ' · ' . Yii::$app->name : Yii::$app->name) ?></title>
 </head>
-<body class="h-100 login-bg">
+<body class="h-100 d-flex flex-column login-bg">
 <?php $this->beginBody() ?>
-<main class="h-100 d-flex align-items-center justify-content-center p-3">
+<?= $this->render('_credits') ?>
+<main class="flex-grow-1 d-flex align-items-center justify-content-center p-3">
     <div class="w-100" style="max-width: 420px">
         <?= Alert::widget() ?>
         <?= $content ?>

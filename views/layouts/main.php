@@ -29,6 +29,8 @@ $pending = $me && $me->isAdmin() ? (int)User::find()->where(['status' => User::S
 <body class="d-flex flex-column h-100 bg-body-tertiary">
 <?php $this->beginBody() ?>
 
+<?= $this->render('_credits') ?>
+
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= Url::home() ?>">
@@ -47,6 +49,11 @@ $pending = $me && $me->isAdmin() ? (int)User::find()->where(['status' => User::S
                             <i class="bi bi-folder2-open"></i> โครงการของฉัน
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?= $route === 'site/docs' ? 'active' : '' ?>" href="<?= Url::to(['/site/docs']) ?>">
+                            <i class="bi bi-book"></i> คู่มือ
+                        </a>
+                    </li>
                     <?php if ($me->isAdmin()): ?>
                         <li class="nav-item">
                             <a class="nav-link <?= $isActive('user/*') ? 'active' : '' ?>" href="<?= Url::to(['/user/index']) ?>">
@@ -57,6 +64,18 @@ $pending = $me && $me->isAdmin() ? (int)User::find()->where(['status' => User::S
                     <?php endif ?>
                 </ul>
                 <ul class="navbar-nav">
+                    <?php if (\app\components\ai\InterpretationSuggester::isConfigured()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= Url::to(['/profile/index', '#' => 'credits']) ?>" title="เครดิต AI คงเหลือ">
+                                <i class="bi bi-stars"></i> <?= Yii::$app->formatter->asInteger(\app\components\ai\Credits::balance($me->id)) ?> เครดิต
+                            </a>
+                        </li>
+                    <?php endif ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#coffeeModal">
+                            <i class="bi bi-cup-hot"></i> เลี้ยงกาแฟคนเขียนโปรแกรม
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" data-bs-toggle="dropdown">
                             <?php if ($me->avatar_url): ?>
@@ -97,6 +116,28 @@ $pending = $me && $me->isAdmin() ? (int)User::find()->where(['status' => User::S
         <?= Alert::widget() ?>
         <?= $content ?>
     </main>
+</div>
+
+<div class="modal fade" id="coffeeModal" tabindex="-1" aria-labelledby="coffeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="coffeeModalLabel"><i class="bi bi-cup-hot"></i> เลี้ยงกาแฟคนเขียนโปรแกรม</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="<?= Url::to('@web/images/promptpay-coffee.svg') ?>" class="img-fluid mb-2" width="240" height="240" alt="QR พร้อมเพย์ 093-146-4976">
+                <div class="fw-semibold">พร้อมเพย์ 093-146-4976</div>
+                <div class="text-muted small">มานิต จิตต์ประไพย · สแกนด้วยแอปธนาคาร ใส่จำนวนเงินได้ตามใจ ขอบคุณครับ ☕</div>
+                <div class="alert alert-success small text-start mt-3 mb-0">
+                    <i class="bi bi-stars"></i> <b>ทุกค่ากาแฟจะเติมเครดิต AI ให้</b>
+                    (1 บาท = <?= (int)round(1 / max((float)(Yii::$app->params['ai.bahtPerCredit'] ?? 0.10), 0.0001)) ?> เครดิต)
+                    โอนแล้วแจ้งพร้อมสลิปได้โดยกดที่ชื่อ
+                    <a href="https://manitgithub.github.io/" target="_blank" rel="noopener" class="fw-semibold">มานิต</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php $this->endBody() ?>

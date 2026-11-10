@@ -3,6 +3,8 @@
 /** @var yii\web\View $this */
 /** @var app\models\User $model */
 /** @var app\models\LoginLog[]|null $logs */
+/** @var int|null $balance */
+/** @var app\models\CreditLedger[]|null $ledger */
 
 use app\models\User;
 use app\models\UserAuth;
@@ -59,6 +61,18 @@ $isSelf = (int)$model->id === (int)Yii::$app->user->id;
                     <?php endforeach ?>
                     <?php if (!$model->auths): ?><li class="list-group-item text-muted">ยังไม่ได้ผูก — ใส่ Gmail ด้านซ้าย หรืออนุมัติคำขอแบบ "รวมกับบัญชีเดิม"</li><?php endif ?>
                 </ul>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-stars"></i> เครดิต AI</div>
+                <div class="card-body border-bottom">
+                    <?= Html::beginForm(['credit', 'id' => $model->id], 'post', ['class' => 'row g-2']) ?>
+                    <div class="col-4"><input type="number" name="amount" class="form-control" placeholder="+100 / -50" required></div>
+                    <div class="col"><input name="note" class="form-control" placeholder="หมายเหตุ เช่น โอนพร้อมเพย์ 50 บาท" maxlength="255"></div>
+                    <div class="col-auto"><button class="btn btn-primary">บันทึก</button></div>
+                    <?= Html::endForm() ?>
+                    <div class="form-text">ใส่ค่าบวกเพื่อเติม ค่าลบเพื่อหัก</div>
+                </div>
+                <?= $this->render('/credit/_history', ['balance' => $balance ?? 0, 'ledger' => $ledger ?? []]) ?>
             </div>
             <div class="card">
                 <div class="card-header">ประวัติการเข้าระบบล่าสุด</div>

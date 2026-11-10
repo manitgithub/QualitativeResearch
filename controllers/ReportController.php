@@ -66,6 +66,18 @@ class ReportController extends ProjectScopedController
             $data[] = ['question' => $question, 'responses' => $responses, 'synth' => $synth];
         }
 
+        // ข้อเสนอของ AI ที่รอรับ/ปฏิเสธ: [response_id][round] => AiSuggestion[]
+        $suggestions = [];
+        if (!$export && $data) {
+            foreach (\app\models\AiSuggestion::find()->where([
+                'question_id' => array_map(fn($b) => $b['question']->id, $data),
+                'status' => \app\models\AiSuggestion::STATUS_PENDING,
+            ])->orderBy('id')->all() as $sg) {
+                // ประเด็นระดับคำถาม (สังเคราะห์) เก็บใต้คีย์ 'q' . question_id
+                $suggestions[$sg->response_id ?? 'q' . $sg->question_id][$sg->round][] = $sg;
+            }
+        }
+
         if ($export) {
             return $this->exportByQuestion($project, $data, $round);
         }
@@ -79,6 +91,8 @@ class ReportController extends ProjectScopedController
             'q' => $q,
             'pagination' => $pagination,
             'canEdit' => $project->canEdit($this->currentUser()),
+            'suggestions' => $suggestions,
+            'aiReady' => $project->ai_enabled && \app\components\ai\InterpretationSuggester::isConfigured(),
         ]);
     }
 
@@ -309,7 +323,7 @@ class ReportController extends ProjectScopedController
         foreach ($items as $it) {
             $ipo[$it->ipo][$it->text] = ($ipo[$it->ipo][$it->text] ?? 0) + 1;
         }
-        $concepts = Concept::find()->where(['project_id' => $project->id])->orderBy('id')->all();
+        $concepts = Concept::find()->where(['project_id' => $project->id, 'ai_pending' => 0])->orderBy('id')->all();
 
         return $this->render('ipo', ['project' => $project, 'round' => $round, 'ipo' => $ipo, 'concepts' => $concepts]);
     }

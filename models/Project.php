@@ -17,6 +17,7 @@ use yii\db\ActiveRecord;
  * @property string|null $started_on
  * @property int $owner_id
  * @property bool $is_archived
+ * @property bool $ai_enabled  หัวหน้าโครงการอนุญาตให้ส่งข้อมูลให้ AI
  * @property int|null $legacy_id
  * @property int $created_at
  * @property int $updated_at
@@ -56,7 +57,7 @@ class Project extends ActiveRecord
             [['title'], 'string', 'max' => 500],
             [['description'], 'string'],
             [['started_on'], 'date', 'format' => 'php:Y-m-d'],
-            [['is_archived'], 'boolean'],
+            [['is_archived', 'ai_enabled'], 'boolean'],
         ];
     }
 
@@ -68,6 +69,7 @@ class Project extends ActiveRecord
             'started_on' => 'วันที่เริ่ม',
             'owner_id' => 'หัวหน้าโครงการ',
             'is_archived' => 'เก็บเข้าคลัง',
+            'ai_enabled' => 'อนุญาตให้ใช้ AI ช่วยวิเคราะห์',
             'created_at' => 'สร้างเมื่อ',
         ];
     }

@@ -1,4 +1,16 @@
+Options -Indexes
+
 RewriteEngine on
+
+# ไฟล์ทดสอบ (index-test.php) และไฟล์ที่ขึ้นต้นด้วยจุด (.htaccess ฯลฯ) ห้ามเปิด
+RewriteRule ^index-test\.php$ - [F,L]
+RewriteRule (^|/)\. - [F,L]
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Yii front controller: URL ที่ไม่ใช่ไฟล์/โฟลเดอร์จริง ส่งเข้า index.php
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule . index.php [L]

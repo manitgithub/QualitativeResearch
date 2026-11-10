@@ -8,8 +8,9 @@
  * @license https://www.yiiframework.com/license/
  */
 
-defined('YII_DEBUG') or define('YII_DEBUG', true);
-defined('YII_ENV') or define('YII_ENV', 'dev');
+// production เป็นค่าตั้งต้น (ใช้บนเซิร์ฟเวอร์จริงได้เลย); เครื่องพัฒนาใช้ YII_ENV=dev ./yii ... ถ้าต้องการ Gii
+defined('YII_ENV') or define('YII_ENV', getenv('YII_ENV') === 'dev' ? 'dev' : 'prod');
+defined('YII_DEBUG') or define('YII_DEBUG', YII_ENV === 'dev');
 
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/vendor/yiisoft/yii2/Yii.php';

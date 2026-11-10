@@ -14,6 +14,12 @@ return [
     'line.clientId' => '',
     'line.clientSecret' => '',
 
+    // https://openrouter.ai/settings/keys — ว่าง = ปิดฟีเจอร์ AI
+    'openrouter.apiKey' => '',
+
+    // เฉพาะโหมด dev (php yii serve): เข้าระบบอัตโนมัติเป็นผู้ใช้ id นี้ (null = admin คนแรก, false = ปิด)
+    'dev.autoLoginUserId' => null,
+
     'legacyDb' => [
         'dsn' => 'mysql:host=127.0.0.1;dbname=nurseapp_legacy',
         'username' => 'root',

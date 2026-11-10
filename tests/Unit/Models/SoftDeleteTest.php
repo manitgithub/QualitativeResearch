@@ -36,7 +36,7 @@ class SoftDeleteTest extends \Codeception\Test\Unit
     public function testEveryTableHasFlagDel()
     {
         $tables = array_diff(Yii::$app->db->schema->getTableNames('', true), ['migration']);
-        verify(count($tables))->equals(13);
+        verify(count($tables))->equals(18);
         foreach ($tables as $t) {
             verify(Yii::$app->db->getTableSchema($t, true)->getColumn('flagDel'))->notNull("$t.flagDel");
             verify(Yii::$app->db->getTableSchema($t)->getColumn('is_deleted'))->null("$t.is_deleted");
