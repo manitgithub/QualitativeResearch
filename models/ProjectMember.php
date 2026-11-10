@@ -18,6 +18,8 @@ use yii\db\ActiveRecord;
  */
 class ProjectMember extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public const ROLE_OWNER = 'owner';
     public const ROLE_MEMBER = 'member';
     public const ROLE_VIEWER = 'viewer';

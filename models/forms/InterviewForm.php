@@ -43,7 +43,7 @@ class InterviewForm extends Model
 
         $q = Question::find()
             ->with('options')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->orderBy(['category' => SORT_ASC, 'sort_order' => SORT_ASC, 'id' => SORT_ASC]);
         if ($onlyQuestionId) {
             $q->andWhere(['id' => $onlyQuestionId]);
@@ -78,7 +78,7 @@ class InterviewForm extends Model
         // ตรวจรหัสซ้ำเฉพาะตอนสร้างใหม่หรือเปลี่ยนรหัส (ข้อมูลเดิมบางโครงการมีรหัสซ้ำอยู่แล้ว)
         $codeChanged = $this->informant->isNewRecord || $this->informant->isAttributeChanged('code');
         $dup = $codeChanged && Informant::find()
-            ->where(['project_id' => $this->project->id, 'code' => $this->informant->code, 'is_deleted' => 0])
+            ->where(['project_id' => $this->project->id, 'code' => $this->informant->code, 'flagDel' => 0])
             ->andFilterWhere(['<>', 'id', $this->informant->id])
             ->exists();
         if ($dup) {
@@ -101,7 +101,7 @@ class InterviewForm extends Model
             }
 
             $existing = Response::find()
-                ->where(['informant_id' => $this->informant->id, 'is_deleted' => 0])
+                ->where(['informant_id' => $this->informant->id, 'flagDel' => 0])
                 ->indexBy('question_id')
                 ->all();
 

@@ -67,23 +67,38 @@ class SiteController extends Controller
     /**
      * หน้าหลัก: รายการโครงการที่ผู้ใช้เข้าถึงได้
      */
-    public function actionIndex($archived = 0)
+    public function actionIndex($archived = 0, $q = null)
     {
         /** @var \app\models\User $user */
         $user = Yii::$app->user->identity;
-        $projects = Project::findVisibleTo($user)
+        $q = trim((string)$q);
+        $query = Project::findVisibleTo($user)
             ->with(['members.user'])
-            ->andWhere(['is_archived' => (int)$archived])
-            ->orderBy(['updated_at' => SORT_DESC])
-            ->all();
+            ->andWhere(['project.is_archived' => (int)$archived])
+            ->orderBy(['project.updated_at' => SORT_DESC]);
+
+        // ค้นหา: ทุกคำต้องพบในชื่อโครงการ รายละเอียด หรือชื่อหัวหน้าโครงการ
+        if ($q !== '') {
+            $query->joinWith('owner o', false);
+            foreach (array_slice(preg_split('/\s+/u', $q), 0, 8) as $word) {
+                $query->andWhere(['or',
+                    ['like', 'project.title', $word],
+                    ['like', 'project.description', $word],
+                    ['like', 'o.first_name', $word],
+                    ['like', 'o.last_name', $word],
+                    ['like', 'o.username', $word],
+                ]);
+            }
+        }
+        $projects = $query->all();
 
         $ids = array_map(fn($p) => $p->id, $projects);
         $counts = [];
         if ($ids) {
             $db = Yii::$app->db;
             foreach ([
-                'informants' => 'SELECT project_id, COUNT(*) FROM {{%informant}} WHERE is_deleted=0 AND project_id IN (' . implode(',', $ids) . ') GROUP BY project_id',
-                'questions' => 'SELECT project_id, COUNT(*) FROM {{%question}} WHERE is_deleted=0 AND project_id IN (' . implode(',', $ids) . ') GROUP BY project_id',
+                'informants' => 'SELECT project_id, COUNT(*) FROM {{%informant}} WHERE flagDel=0 AND project_id IN (' . implode(',', $ids) . ') GROUP BY project_id',
+                'questions' => 'SELECT project_id, COUNT(*) FROM {{%question}} WHERE flagDel=0 AND project_id IN (' . implode(',', $ids) . ') GROUP BY project_id',
             ] as $key => $sql) {
                 foreach ($db->createCommand($sql)->queryAll(\PDO::FETCH_NUM) as [$pid, $n]) {
                     $counts[$pid][$key] = (int)$n;
@@ -95,6 +110,7 @@ class SiteController extends Controller
             'projects' => $projects,
             'counts' => $counts,
             'archived' => (int)$archived,
+            'q' => $q,
         ]);
     }
 

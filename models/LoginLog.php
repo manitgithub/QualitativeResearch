@@ -7,6 +7,7 @@ use yii\db\ActiveRecord;
 
 /**
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property int|null $user_id
  * @property string $method
  * @property string|null $ip
@@ -15,6 +16,8 @@ use yii\db\ActiveRecord;
  */
 class LoginLog extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%login_log}}';

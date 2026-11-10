@@ -17,7 +17,7 @@ use yii\db\ActiveRecord;
  * @property int|null $collection_method_id
  * @property string|null $interviewed_on
  * @property string|null $note
- * @property bool $is_deleted
+ * @property bool $flagDel
  * @property int|null $created_by
  * @property int|null $legacy_id
  * @property int $created_at
@@ -30,6 +30,8 @@ use yii\db\ActiveRecord;
  */
 class Informant extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%informant}}';
@@ -89,11 +91,7 @@ class Informant extends ActiveRecord
     public function getResponses()
     {
         return $this->hasMany(Response::class, ['informant_id' => 'id'])
-            ->andOnCondition(['response.is_deleted' => 0]);
+            ->andOnCondition(['response.flagDel' => 0]);
     }
 
-    public function softDelete(): bool
-    {
-        return (bool)$this->updateAttributes(['is_deleted' => 1, 'updated_at' => time()]);
-    }
 }

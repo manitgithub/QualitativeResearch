@@ -45,16 +45,16 @@ class ProjectController extends ProjectScopedController
     {
         $project = $this->findProject($id);
 
-        $questionIds = Question::find()->select('id')->where(['project_id' => $project->id, 'is_deleted' => 0])->column();
+        $questionIds = Question::find()->select('id')->where(['project_id' => $project->id, 'flagDel' => 0])->column();
         $stats = [
             'informants' => $project->countInformants(),
             'research' => (int)$project->getResearchQuestions()->count(),
             'demographic' => (int)$project->getDemographicQuestions()->count(),
-            'responses' => (int)Response::find()->where(['question_id' => $questionIds, 'is_deleted' => 0])->count(),
+            'responses' => (int)Response::find()->where(['question_id' => $questionIds, 'flagDel' => 0])->count(),
         ];
         $rounds = Interpretation::find()
             ->select(['round', 'n' => 'COUNT(*)'])
-            ->where(['question_id' => $questionIds, 'is_deleted' => 0])
+            ->where(['question_id' => $questionIds, 'flagDel' => 0])
             ->groupBy('round')
             ->asArray()
             ->all();
@@ -64,12 +64,12 @@ class ProjectController extends ProjectScopedController
         $progress = [];
         if ($questionIds) {
             $answered = Response::find()->select(['question_id', 'n' => 'COUNT(*)'])
-                ->where(['question_id' => $questionIds, 'is_deleted' => 0])
+                ->where(['question_id' => $questionIds, 'flagDel' => 0])
                 ->groupBy('question_id')->asArray()->all();
             $coded = Response::find()->alias('r')
                 ->select(['r.question_id', 'n' => 'COUNT(DISTINCT r.id)'])
-                ->innerJoin(['i' => Interpretation::tableName()], 'i.response_id = r.id AND i.is_deleted = 0 AND i.round = 1')
-                ->where(['r.question_id' => $questionIds, 'r.is_deleted' => 0])
+                ->innerJoin(['i' => Interpretation::tableName()], 'i.response_id = r.id AND i.flagDel = 0 AND i.round = 1')
+                ->where(['r.question_id' => $questionIds, 'r.flagDel' => 0])
                 ->groupBy('r.question_id')->asArray()->all();
             $progress = [
                 'answered' => array_column($answered, 'n', 'question_id'),
@@ -113,7 +113,17 @@ class ProjectController extends ProjectScopedController
         if (Yii::$app->request->post('ProjectMember')) {
             $member->load(Yii::$app->request->post());
             $member->project_id = $project->id;
-            if ($member->save()) {
+            // เคยเป็นสมาชิกแล้วถูกนำออก (flagDel = 1): นำแถวเดิมกลับมาแทนการเพิ่มใหม่ (primary key ซ้ำไม่ได้)
+            $removed = ProjectMember::find()->withDeleted()
+                ->where(['project_id' => $project->id, 'user_id' => (int)$member->user_id, 'flagDel' => 1])->one();
+            if ($removed && $member->validate(['role'])) {
+                $removed->role = $member->role;
+                $removed->flagDel = 0;
+                $removed->save(false, ['role', 'flagDel']);
+                Yii::$app->session->setFlash('success', 'เพิ่มทีมงานแล้ว');
+                return $this->refresh();
+            }
+            if (!$removed && $member->save()) {
                 Yii::$app->session->setFlash('success', 'เพิ่มทีมงานแล้ว');
                 return $this->refresh();
             }

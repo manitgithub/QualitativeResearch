@@ -136,7 +136,7 @@ class PermissionCest
         $I->amLoggedInAs($this->u['owner']);
         $I->amOnRoute('question/delete', ['id' => $this->q->id]);
         $I->seeResponseCodeIs(405);
-        $I->seeRecord(Question::class, ['id' => $this->q->id, 'is_deleted' => 0]);
+        $I->seeRecord(Question::class, ['id' => $this->q->id, 'flagDel' => 0]);
     }
 
     public function archivedProjectIsReadOnly(FunctionalTester $I)

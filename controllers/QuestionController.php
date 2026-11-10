@@ -17,7 +17,7 @@ class QuestionController extends ProjectScopedController
         $project = $this->findProject($projectId);
         $questions = Question::find()
             ->with('options')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->orderBy(['sort_order' => SORT_ASC, 'id' => SORT_ASC])
             ->all();
 
@@ -98,7 +98,7 @@ class QuestionController extends ProjectScopedController
 
     protected function findQuestion($id): Question
     {
-        $q = Question::findOne(['id' => (int)$id, 'is_deleted' => 0]);
+        $q = Question::findOne(['id' => (int)$id, 'flagDel' => 0]);
         if (!$q) {
             throw new NotFoundHttpException('ไม่พบคำถาม');
         }

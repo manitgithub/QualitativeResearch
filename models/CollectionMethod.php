@@ -9,12 +9,15 @@ use yii\helpers\ArrayHelper;
  * วิธีการเก็บข้อมูล (เดิม dt_information)
  *
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property string $name
  * @property int $sort_order
  * @property int|null $legacy_id
  */
 class CollectionMethod extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%collection_method}}';

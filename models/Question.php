@@ -16,7 +16,7 @@ use yii\db\ActiveRecord;
  * @property string $title
  * @property string|null $detail
  * @property int $sort_order
- * @property bool $is_deleted
+ * @property bool $flagDel
  * @property int|null $created_by
  * @property int|null $legacy_id
  * @property int $created_at
@@ -28,6 +28,8 @@ use yii\db\ActiveRecord;
  */
 class Question extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public const CATEGORY_RESEARCH = 'research';
     public const CATEGORY_DEMOGRAPHIC = 'demographic';
 
@@ -149,7 +151,7 @@ class Question extends ActiveRecord
     public function getResponses()
     {
         return $this->hasMany(Response::class, ['question_id' => 'id'])
-            ->andOnCondition(['response.is_deleted' => 0]);
+            ->andOnCondition(['response.flagDel' => 0]);
     }
 
     public function getCategoryLabel(): string
@@ -162,8 +164,4 @@ class Question extends ActiveRecord
         return self::typeOptions()[$this->answer_type] ?? $this->answer_type;
     }
 
-    public function softDelete(): bool
-    {
-        return (bool)$this->updateAttributes(['is_deleted' => 1, 'updated_at' => time()]);
-    }
 }

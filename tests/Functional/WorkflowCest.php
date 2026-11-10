@@ -100,7 +100,7 @@ class WorkflowCest
         $this->post($I, 'interpretation/update', ['id' => $it->id], ['Interpretation' => ['text' => 'ขาดแรงสนับสนุนจากครอบครัว', 'ipo' => 'process']]);
         $I->seeRecord(Interpretation::class, ['id' => $it->id, 'text' => 'ขาดแรงสนับสนุนจากครอบครัว', 'ipo' => 'process']);
         $this->post($I, 'interpretation/delete', ['id' => $it->id]);
-        $I->seeRecord(Interpretation::class, ['id' => $it->id, 'is_deleted' => 1]);
+        verify(Interpretation::find()->withDeleted()->where(['id' => $it->id, 'flagDel' => 1])->exists())->true();
         $I->amOnRoute('report/question', ['projectId' => $p->id, 'round' => 2]);
         $I->dontSee('ขาดแรงสนับสนุนจากครอบครัว');
 
@@ -176,7 +176,7 @@ class WorkflowCest
         for ($i = 1; $i <= 250; $i++) {
             $rows[] = [$p->id, sprintf('P%03d', $i), 0, $now, $now];
         }
-        \Yii::$app->db->createCommand()->batchInsert('informant', ['project_id', 'code', 'is_deleted', 'created_at', 'updated_at'], $rows)->execute();
+        \Yii::$app->db->createCommand()->batchInsert('informant', ['project_id', 'code', 'flagDel', 'created_at', 'updated_at'], $rows)->execute();
 
         $I->amLoggedInAs($owner);
         $I->amOnRoute('report/informant', ['projectId' => $p->id]);

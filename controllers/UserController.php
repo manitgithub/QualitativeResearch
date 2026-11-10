@@ -129,6 +129,8 @@ class UserController extends Controller
         if ($model->status !== User::STATUS_PENDING) {
             throw new BadRequestHttpException('ปฏิเสธได้เฉพาะบัญชีที่รออนุมัติ');
         }
+        // ซ่อนบัญชีและการผูก Google/LINE (flagDel) — คนเดิมยังส่งคำขอใหม่ได้
+        UserAuth::deleteAll(['user_id' => $model->id]);
         $model->delete();
         Yii::$app->session->setFlash('success', 'ปฏิเสธคำขอของ ' . $model->getFullName() . ' แล้ว');
         return $this->redirect(['index']);

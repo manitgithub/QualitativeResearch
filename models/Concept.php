@@ -9,6 +9,7 @@ use yii\db\ActiveRecord;
  * องค์ประกอบของ Conceptual map (เดิม dt_conceptual)
  *
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property int $project_id
  * @property string $name
  * @property bool $is_input
@@ -22,6 +23,8 @@ use yii\db\ActiveRecord;
  */
 class Concept extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%concept}}';

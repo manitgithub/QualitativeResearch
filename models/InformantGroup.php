@@ -9,12 +9,15 @@ use yii\helpers\ArrayHelper;
  * กลุ่มผู้ให้ข้อมูล (เดิม dt_group)
  *
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property int $project_id
  * @property string $name
  * @property int|null $legacy_id
  */
 class InformantGroup extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%informant_group}}';

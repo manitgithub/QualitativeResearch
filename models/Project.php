@@ -11,6 +11,7 @@ use yii\db\ActiveRecord;
  * หัวข้อ/โครงการวิจัย (เดิม dt_main)
  *
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property string $title
  * @property string|null $description
  * @property string|null $started_on
@@ -27,6 +28,8 @@ use yii\db\ActiveRecord;
  */
 class Project extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%project}}';
@@ -95,7 +98,7 @@ class Project extends ActiveRecord
     public function getQuestions()
     {
         return $this->hasMany(Question::class, ['project_id' => 'id'])
-            ->andOnCondition(['question.is_deleted' => 0])
+            ->andOnCondition(['question.flagDel' => 0])
             ->orderBy(['question.sort_order' => SORT_ASC, 'question.id' => SORT_ASC]);
     }
 
@@ -112,7 +115,7 @@ class Project extends ActiveRecord
     public function getInformants()
     {
         return $this->hasMany(Informant::class, ['project_id' => 'id'])
-            ->andOnCondition(['informant.is_deleted' => 0]);
+            ->andOnCondition(['informant.flagDel' => 0]);
     }
 
     public function getGroups()
@@ -168,9 +171,10 @@ class Project extends ActiveRecord
     {
         $q = static::find()->with('owner');
         if (!$user->isAdmin()) {
+            // ระบุชื่อตาราง เพราะผู้เรียกอาจ join ตาราง user เพิ่ม (เช่น ค้นหาตามชื่อหัวหน้าโครงการ)
             $q->where(['or',
-                ['owner_id' => $user->id],
-                ['id' => ProjectMember::find()->select('project_id')->where(['user_id' => $user->id])],
+                ['project.owner_id' => $user->id],
+                ['project.id' => ProjectMember::find()->select('project_id')->where(['user_id' => $user->id])],
             ]);
         }
         return $q;

@@ -81,7 +81,7 @@ class ImportForm extends Model
                 if ($code === '') {
                     continue;
                 }
-                $informant = Informant::findOne(['project_id' => $this->project->id, 'code' => $code, 'is_deleted' => 0]);
+                $informant = Informant::findOne(['project_id' => $this->project->id, 'code' => $code, 'flagDel' => 0]);
                 if (!$informant) {
                     $informant = new Informant([
                         'project_id' => $this->project->id,
@@ -102,7 +102,7 @@ class ImportForm extends Model
                     if ($raw === '') {
                         continue;
                     }
-                    $existing = Response::findOne(['informant_id' => $informant->id, 'question_id' => $question->id, 'is_deleted' => 0]);
+                    $existing = Response::findOne(['informant_id' => $informant->id, 'question_id' => $question->id, 'flagDel' => 0]);
                     if ($existing && !$this->overwrite) {
                         continue;
                     }
@@ -133,7 +133,7 @@ class ImportForm extends Model
     private function mapColumns(array $header): array
     {
         $questions = Question::find()->with('options')
-            ->where(['project_id' => $this->project->id, 'is_deleted' => 0])->indexBy('id')->all();
+            ->where(['project_id' => $this->project->id, 'flagDel' => 0])->indexBy('id')->all();
         $byTitle = [];
         foreach ($questions as $q) {
             $byTitle[$this->normalizeTitle($q->title)] = $q;
@@ -227,7 +227,7 @@ class ImportForm extends Model
      */
     public function buildTemplate(): string
     {
-        $questions = Question::find()->where(['project_id' => $this->project->id, 'is_deleted' => 0])
+        $questions = Question::find()->where(['project_id' => $this->project->id, 'flagDel' => 0])
             ->orderBy(['category' => SORT_ASC, 'sort_order' => SORT_ASC, 'id' => SORT_ASC])->all();
 
         $ss = new Spreadsheet();

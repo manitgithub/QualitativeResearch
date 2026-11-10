@@ -127,8 +127,9 @@ class InterviewTest extends \Codeception\Test\Unit
         $edit->load(['Informant' => ['code' => 'P03'], 'answers' => [$this->qText->id => '']]);
         verify($edit->save())->true();
 
-        $r = Response::findOne(['informant_id' => $inf->id, 'question_id' => $this->qText->id]);
-        verify((int)$r->is_deleted)->equals(1);
+        verify(Response::findOne(['informant_id' => $inf->id, 'question_id' => $this->qText->id]))->null();   // hidden
+        $r = Response::find()->withDeleted()->where(['informant_id' => $inf->id, 'question_id' => $this->qText->id])->one();
+        verify((int)$r->flagDel)->equals(1);                                                                 // but kept
     }
 
     public function testOnlyQuestionModeLimitsQuestions()

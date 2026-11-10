@@ -116,29 +116,30 @@ SQL;
         verify(ProjectMember::find()->where(['project_id' => $p->id])->count())->equals(2);
 
         // questions: category/type mapped, deleted flag kept, orphan skipped
-        verify(Question::find()->count())->equals(4);
+        verify(Question::find()->withDeleted()->count())->equals(4);
+        verify(Question::find()->count())->equals(3);                 // the 'D' question is hidden
         verify(Question::findOne(['legacy_id' => 101])->answer_type)->equals('choice');
         verify(Question::findOne(['legacy_id' => 101])->category)->equals('demographic');
         verify(Question::findOne(['legacy_id' => 102])->answer_type)->equals('boolean');
-        verify((int)Question::findOne(['legacy_id' => 103])->is_deleted)->equals(1);
+        verify((int)Question::find()->withDeleted()->where(['legacy_id' => 103])->one()->flagDel)->equals(1);
 
         // informants: duplicate codes kept, impossible age dropped, orphan skipped
         verify(Informant::find()->count())->equals(2);
         verify(Informant::findOne(['legacy_id' => 1001])->age)->null();
 
         // responses
-        $r = fn($id) => Response::findOne(['legacy_id' => $id]);
+        $r = fn($id) => Response::find()->withDeleted()->where(['legacy_id' => $id])->one();
         verify($r(2000)->value_text)->equals('คำตอบ ผู้');
         verify($r(2001)->option_id)->notNull();
         verify($r(2001)->value_text)->null();
         verify($r(2002)->value_text)->equals('1');
         verify($r(2003)->value_text)->equals('0');
-        verify((int)$r(2004)->is_deleted)->equals(1);
+        verify((int)$r(2004)->flagDel)->equals(1);
         verify($r(2005))->null();                         // question has no project
         verify($r(2006)->value_text)->equals('ไม่ใช่รหัส');  // unmapped choice kept as text
 
         // interpretations
-        $i = fn($id) => Interpretation::findOne(['legacy_id' => $id]);
+        $i = fn($id) => Interpretation::find()->withDeleted()->where(['legacy_id' => $id])->one();
         verify($i(3000)->round)->equals(1);
         verify($i(3000)->ipo)->equals('process');
         verify($i(3001)->round)->equals(2);
@@ -147,7 +148,7 @@ SQL;
         verify($i(3003)->round)->equals(1);               // NULL channel -> round 1
         verify($i(3004))->null();                         // answer missing
         verify($i(3005))->null();                         // blank text
-        verify((int)$i(3006)->is_deleted)->equals(1);
+        verify((int)$i(3006)->flagDel)->equals(1);
 
         // concepts and login history
         verify(\app\models\Concept::find()->count())->equals(1);

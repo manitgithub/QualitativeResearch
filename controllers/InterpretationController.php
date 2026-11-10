@@ -24,7 +24,7 @@ class InterpretationController extends ProjectScopedController
         $model->load(['Interpretation' => $data]);
 
         if ($model->response_id) {
-            $response = Response::findOne(['id' => (int)$model->response_id, 'is_deleted' => 0]);
+            $response = Response::findOne(['id' => (int)$model->response_id, 'flagDel' => 0]);
             if (!$response) {
                 throw new NotFoundHttpException('ไม่พบคำตอบ');
             }
@@ -69,7 +69,7 @@ class InterpretationController extends ProjectScopedController
 
     protected function findModel($id): Interpretation
     {
-        $m = Interpretation::find()->with('question')->where(['id' => (int)$id, 'is_deleted' => 0])->one();
+        $m = Interpretation::find()->with('question')->where(['id' => (int)$id, 'flagDel' => 0])->one();
         if (!$m) {
             throw new NotFoundHttpException('ไม่พบประเด็น');
         }

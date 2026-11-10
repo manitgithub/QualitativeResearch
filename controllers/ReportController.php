@@ -53,7 +53,7 @@ class ReportController extends ProjectScopedController
             $responses = Response::find()->alias('r')
                 ->innerJoinWith(['informant inf'])
                 ->with(['option', 'interpretations'])
-                ->where(['r.question_id' => $question->id, 'r.is_deleted' => 0, 'inf.is_deleted' => 0])
+                ->where(['r.question_id' => $question->id, 'r.flagDel' => 0, 'inf.flagDel' => 0])
                 ->andFilterWhere(['or', ['like', 'r.value_text', $q], ['like', 'inf.code', $q]])
                 ->orderBy(['inf.code' => SORT_ASC])
                 ->all();
@@ -61,7 +61,7 @@ class ReportController extends ProjectScopedController
                 $r->populateRelation('question', $question);
             }
             $synth = Interpretation::find()
-                ->where(['question_id' => $question->id, 'response_id' => null, 'is_deleted' => 0])
+                ->where(['question_id' => $question->id, 'response_id' => null, 'flagDel' => 0])
                 ->orderBy(['round' => SORT_ASC, 'id' => SORT_ASC])->all();
             $data[] = ['question' => $question, 'responses' => $responses, 'synth' => $synth];
         }
@@ -119,7 +119,7 @@ class ReportController extends ProjectScopedController
         $project = $this->findProject($projectId);
         $questions = ArrayHelper::index($this->questions($project), 'id');
         $query = Informant::find()->with('group')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->orderBy(['code' => SORT_ASC, 'id' => SORT_ASC]);
 
         // ค่าคำตอบของผู้ให้ข้อมูลชุดหนึ่ง: [informant_id][question_id] => ข้อความ
@@ -129,7 +129,7 @@ class ReportController extends ProjectScopedController
                 return $matrix;
             }
             foreach (Response::find()->with('option')
-                         ->where(['informant_id' => $informantIds, 'question_id' => array_keys($questions), 'is_deleted' => 0])
+                         ->where(['informant_id' => $informantIds, 'question_id' => array_keys($questions), 'flagDel' => 0])
                          ->each(1000) as $r) {
                 $r->populateRelation('question', $questions[$r->question_id]);
                 $matrix[$r->informant_id][$r->question_id] = $r->getDisplayValue();
@@ -185,9 +185,9 @@ class ReportController extends ProjectScopedController
         $charts = [];
         foreach ($questions as $question) {
             $rows = Response::find()->alias('r')
-                ->innerJoin(['i' => Informant::tableName()], 'i.id = r.informant_id AND i.is_deleted = 0')
+                ->innerJoin(['i' => Informant::tableName()], 'i.id = r.informant_id AND i.flagDel = 0')
                 ->select(['r.option_id', 'r.value_text', 'n' => 'COUNT(*)'])
-                ->where(['r.question_id' => $question->id, 'r.is_deleted' => 0])
+                ->where(['r.question_id' => $question->id, 'r.flagDel' => 0])
                 ->groupBy(['r.option_id', 'r.value_text'])
                 ->asArray()->all();
             $labels = $values = [];
@@ -207,7 +207,7 @@ class ReportController extends ProjectScopedController
 
         // กลุ่มอายุ
         $ages = Informant::find()->select('age')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])->andWhere(['not', ['age' => null]])->column();
+            ->where(['project_id' => $project->id, 'flagDel' => 0])->andWhere(['not', ['age' => null]])->column();
         $ageBins = [];
         foreach ($ages as $a) {
             $bin = (int)floor($a / 10) * 10;
@@ -242,7 +242,7 @@ class ReportController extends ProjectScopedController
         if ($mode === 'answers') {
             foreach ($this->questions($project, Question::CATEGORY_RESEARCH) as $question) {
                 $responses = Response::find()->alias('r')->innerJoinWith('informant inf')->with('option')
-                    ->where(['r.question_id' => $question->id, 'r.is_deleted' => 0, 'inf.is_deleted' => 0])->all();
+                    ->where(['r.question_id' => $question->id, 'r.flagDel' => 0, 'inf.flagDel' => 0])->all();
                 $grouped = [];
                 foreach ($responses as $r) {
                     $r->populateRelation('question', $question);
@@ -280,8 +280,8 @@ class ReportController extends ProjectScopedController
         $texts = Interpretation::find()->alias('i')
             ->select('i.text')
             ->leftJoin(['r' => Response::tableName()], 'r.id = i.response_id')
-            ->where(['i.question_id' => $ids, 'i.round' => $round, 'i.is_deleted' => 0])
-            ->andWhere(['or', ['i.response_id' => null], ['r.is_deleted' => 0]])
+            ->where(['i.question_id' => $ids, 'i.round' => $round, 'i.flagDel' => 0])
+            ->andWhere(['or', ['i.response_id' => null], ['r.flagDel' => 0]])
             ->column();
 
         return $this->render('wordcloud', [
@@ -300,9 +300,9 @@ class ReportController extends ProjectScopedController
     {
         $project = $this->findProject($projectId);
         $round = max(1, min(4, (int)$round));
-        $ids = Question::find()->select('id')->where(['project_id' => $project->id, 'is_deleted' => 0])->column();
+        $ids = Question::find()->select('id')->where(['project_id' => $project->id, 'flagDel' => 0])->column();
         $items = Interpretation::find()
-            ->where(['question_id' => $ids, 'round' => $round, 'is_deleted' => 0])
+            ->where(['question_id' => $ids, 'round' => $round, 'flagDel' => 0])
             ->andWhere(['not', ['ipo' => null]])
             ->orderBy('id')->all();
         $ipo = ['input' => [], 'process' => [], 'output' => []];
@@ -320,7 +320,7 @@ class ReportController extends ProjectScopedController
     protected function questions(Project $project, ?string $category = null): array
     {
         return Question::find()->with('options')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->andFilterWhere(['category' => $category])
             ->orderBy(['category' => SORT_DESC, 'sort_order' => SORT_ASC, 'id' => SORT_ASC])
             ->all();
@@ -338,8 +338,8 @@ class ReportController extends ProjectScopedController
                 ->from(['i' => Interpretation::tableName()])
                 ->leftJoin(['r' => Response::tableName()], 'r.id = i.response_id')
                 ->leftJoin(['inf' => Informant::tableName()], 'inf.id = r.informant_id')
-                ->where(['i.question_id' => $question->id, 'i.round' => $round, 'i.is_deleted' => 0])
-                ->andWhere(['or', ['i.response_id' => null], ['and', ['r.is_deleted' => 0], ['inf.is_deleted' => 0]]])
+                ->where(['i.question_id' => $question->id, 'i.round' => $round, 'i.flagDel' => 0])
+                ->andWhere(['or', ['i.response_id' => null], ['and', ['r.flagDel' => 0], ['inf.flagDel' => 0]]])
                 ->orderBy(['i.id' => SORT_ASC])
                 ->all();
             $themes = [];

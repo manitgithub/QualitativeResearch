@@ -4,6 +4,7 @@
 /** @var app\models\Project[] $projects */
 /** @var array $counts */
 /** @var int $archived */
+/** @var string $q */
 
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -23,11 +24,32 @@ $me = Yii::$app->user->identity;
     </div>
 </div>
 
+<form method="get" action="<?= Url::to(['index']) ?>" class="mb-3" role="search">
+    <?php if ($archived): ?><input type="hidden" name="archived" value="1"><?php endif ?>
+    <div class="input-group" style="max-width: 640px">
+        <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
+        <input type="search" name="q" value="<?= Html::encode($q) ?>" class="form-control"
+               placeholder="ค้นหาชื่อโครงการ รายละเอียด หรือชื่อหัวหน้าโครงการ" aria-label="ค้นหาโครงการ"
+               autocomplete="off" <?= $q !== '' ? 'autofocus' : '' ?>>
+        <button class="btn btn-primary" type="submit">ค้นหา</button>
+        <?php if ($q !== ''): ?>
+            <a href="<?= Url::to(['index', 'archived' => $archived ?: null]) ?>" class="btn btn-outline-secondary" title="ล้างคำค้น"><i class="bi bi-x-lg"></i></a>
+        <?php endif ?>
+    </div>
+    <?php if ($q !== ''): ?>
+        <div class="small text-muted mt-2">พบ <?= count($projects) ?> โครงการ สำหรับ “<?= Html::encode($q) ?>”</div>
+    <?php endif ?>
+</form>
+
 <?php if (!$projects): ?>
     <div class="card">
         <div class="card-body text-center py-5 text-muted">
-            <i class="bi bi-folder2 display-4 d-block mb-2"></i>
-            <?= $archived ? 'ไม่มีโครงการในคลัง' : 'ยังไม่มีโครงการ เริ่มสร้างโครงการวิจัยแรกได้เลย' ?>
+            <i class="bi bi-<?= $q !== '' ? 'search' : 'folder2' ?> display-4 d-block mb-2"></i>
+            <?php if ($q !== ''): ?>
+                ไม่พบโครงการที่ตรงกับ “<?= Html::encode($q) ?>”
+            <?php else: ?>
+                <?= $archived ? 'ไม่มีโครงการในคลัง' : 'ยังไม่มีโครงการ เริ่มสร้างโครงการวิจัยแรกได้เลย' ?>
+            <?php endif ?>
         </div>
     </div>
 <?php endif ?>

@@ -21,7 +21,7 @@ use yii\db\ActiveRecord;
  * @property int $round
  * @property string|null $ipo
  * @property string $text
- * @property bool $is_deleted
+ * @property bool $flagDel
  * @property int|null $created_by
  * @property int|null $legacy_id
  * @property int $created_at
@@ -32,6 +32,8 @@ use yii\db\ActiveRecord;
  */
 class Interpretation extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public const IPO_INPUT = 'input';
     public const IPO_PROCESS = 'process';
     public const IPO_OUTPUT = 'output';
@@ -101,8 +103,4 @@ class Interpretation extends ActiveRecord
         return $this->hasOne(Response::class, ['id' => 'response_id']);
     }
 
-    public function softDelete(): bool
-    {
-        return (bool)$this->updateAttributes(['is_deleted' => 1, 'updated_at' => time()]);
-    }
 }

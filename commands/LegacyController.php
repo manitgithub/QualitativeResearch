@@ -132,6 +132,8 @@ class LegacyController extends Controller
     private function purge(): void
     {
         $this->stdout("ลบข้อมูลที่เคยนำเข้า...\n");
+        // ข้อยกเว้นเดียวของ flagDel: --fresh ล้างข้อมูลจากระบบเดิมเพื่อนำเข้าชุดเดิมซ้ำ จึงลบจริง
+        // (ถ้าแค่ซ่อน legacy_id ที่ unique จะทำให้นำเข้าใหม่ไม่ได้) ข้อมูลที่ผู้ใช้สร้างในระบบใหม่ไม่ถูกแตะ
         // ลำดับลูก → แม่; ตารางลูกส่วนใหญ่ลบตาม CASCADE อยู่แล้ว
         foreach (['interpretation', 'response', 'informant', 'question_option', 'question', 'concept',
                      'informant_group', 'project', 'collection_method'] as $t) {
@@ -431,7 +433,7 @@ class LegacyController extends Controller
                 'title' => $this->str($r['name']) ?? ('คำถาม #' . $r['id']),
                 'detail' => $this->str($r['detail'] ?? null),
                 'sort_order' => (int)$r['id'],
-                'is_deleted' => ($r['status'] ?? '') === 'D' ? 1 : 0,
+                'flagDel' => ($r['status'] ?? '') === 'D' ? 1 : 0,
                 'created_by' => $users[(int)($r['userkey'] ?? 0)] ?? null,
                 'created_at' => $created,
                 'updated_at' => $created,
@@ -512,7 +514,7 @@ class LegacyController extends Controller
                     'question_id' => $qid,
                     'value_text' => $value,
                     'option_id' => $optionId,
-                    'is_deleted' => ($r['status'] ?? '') === 'D' ? 1 : 0,
+                    'flagDel' => ($r['status'] ?? '') === 'D' ? 1 : 0,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -553,7 +555,7 @@ class LegacyController extends Controller
                     'round' => in_array((int)$r['channel'], [1, 2, 3, 4], true) ? (int)$r['channel'] : 1,
                     'ipo' => match ((string)$r['types']) { '1' => 'input', '2' => 'process', '3' => 'output', default => null },
                     'text' => $text,
-                    'is_deleted' => ($r['status'] ?? '') === 'D' ? 1 : 0,
+                    'flagDel' => ($r['status'] ?? '') === 'D' ? 1 : 0,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];

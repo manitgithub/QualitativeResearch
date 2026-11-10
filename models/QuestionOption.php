@@ -8,6 +8,7 @@ use yii\db\ActiveRecord;
  * ตัวเลือกคำตอบ (เดิม dt_anwer)
  *
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property int $question_id
  * @property string $label
  * @property int $sort_order
@@ -15,6 +16,8 @@ use yii\db\ActiveRecord;
  */
 class QuestionOption extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%question_option}}';

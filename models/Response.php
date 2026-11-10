@@ -14,7 +14,7 @@ use yii\db\ActiveRecord;
  * @property int $question_id
  * @property string|null $value_text
  * @property int|null $option_id
- * @property bool $is_deleted
+ * @property bool $flagDel
  * @property int|null $created_by
  * @property int|null $legacy_id
  * @property int $created_at
@@ -27,6 +27,8 @@ use yii\db\ActiveRecord;
  */
 class Response extends ActiveRecord
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public static function tableName()
     {
         return '{{%response}}';
@@ -78,7 +80,7 @@ class Response extends ActiveRecord
     public function getInterpretations()
     {
         return $this->hasMany(Interpretation::class, ['response_id' => 'id'])
-            ->andOnCondition(['interpretation.is_deleted' => 0])
+            ->andOnCondition(['interpretation.flagDel' => 0])
             ->orderBy(['interpretation.round' => SORT_ASC, 'interpretation.id' => SORT_ASC]);
     }
 
@@ -97,8 +99,4 @@ class Response extends ActiveRecord
         return (string)$this->value_text;
     }
 
-    public function softDelete(): bool
-    {
-        return (bool)$this->updateAttributes(['is_deleted' => 1, 'updated_at' => time()]);
-    }
 }

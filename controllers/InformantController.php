@@ -22,7 +22,7 @@ class InformantController extends ProjectScopedController
 
         $query = Informant::find()
             ->with(['group', 'collectionMethod'])
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->andFilterWhere(['like', 'code', $q])
             ->andFilterWhere(['group_id' => $groupId]);
 
@@ -38,7 +38,7 @@ class InformantController extends ProjectScopedController
         $ids = array_map(fn($m) => $m->id, $provider->getModels());
         $answerCounts = $ids ? Response::find()
             ->select(['informant_id', 'n' => 'COUNT(*)'])
-            ->where(['informant_id' => $ids, 'is_deleted' => 0])
+            ->where(['informant_id' => $ids, 'flagDel' => 0])
             ->groupBy('informant_id')->asArray()->all() : [];
 
         return $this->render('index', [
@@ -92,20 +92,20 @@ class InformantController extends ProjectScopedController
 
         $responses = Response::find()
             ->with(['question', 'option', 'interpretations'])
-            ->where(['informant_id' => $informant->id, 'is_deleted' => 0])
+            ->where(['informant_id' => $informant->id, 'flagDel' => 0])
             ->all();
         usort($responses, fn($a, $b) => [$a->question->category !== 'demographic', $a->question->sort_order, $a->question_id]
             <=> [$b->question->category !== 'demographic', $b->question->sort_order, $b->question_id]);
 
         $ids = Informant::find()->select('id')
-            ->where(['project_id' => $project->id, 'is_deleted' => 0])
+            ->where(['project_id' => $project->id, 'flagDel' => 0])
             ->orderBy(['code' => SORT_ASC])->column();
         $pos = array_search($informant->id, $ids);
 
         return $this->render('view', [
             'project' => $project,
             'informant' => $informant,
-            'responses' => array_values(array_filter($responses, fn($r) => !$r->question->is_deleted)),
+            'responses' => array_values(array_filter($responses, fn($r) => !$r->question->flagDel)),
             'prevId' => $pos > 0 ? $ids[$pos - 1] : null,
             'nextId' => $pos !== false && $pos < count($ids) - 1 ? $ids[$pos + 1] : null,
             'canEdit' => $project->canEdit($this->currentUser()),
@@ -162,7 +162,7 @@ class InformantController extends ProjectScopedController
 
     protected function findInformant($id): Informant
     {
-        $m = Informant::findOne(['id' => (int)$id, 'is_deleted' => 0]);
+        $m = Informant::findOne(['id' => (int)$id, 'flagDel' => 0]);
         if (!$m) {
             throw new NotFoundHttpException('ไม่พบผู้ให้ข้อมูล');
         }

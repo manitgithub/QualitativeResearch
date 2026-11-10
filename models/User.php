@@ -9,6 +9,7 @@ use yii\web\IdentityInterface;
 
 /**
  * @property int $id
+ * @property bool $flagDel  1 = ลบแล้ว (ซ่อน)
  * @property string|null $username
  * @property string|null $email
  * @property string|null $prefix
@@ -28,6 +29,8 @@ use yii\web\IdentityInterface;
  */
 class User extends ActiveRecord implements IdentityInterface
 {
+    use \app\components\softdelete\SoftDeleteTrait;
+
     public const STATUS_INACTIVE = 0;
     public const STATUS_PENDING = 5;
     public const STATUS_ACTIVE = 10;

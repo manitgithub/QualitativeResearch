@@ -12,7 +12,7 @@ use yii\base\UserException;
  * ใช้ตอนผู้ดูแลอนุมัติ: ผู้ใช้เดิมจากระบบเก่าไม่มีอีเมล จึงจับคู่อัตโนมัติไม่ได้
  *
  * ย้ายการผูก Google/LINE, ประวัติเข้าระบบ และข้อมูลทุกอย่างที่บัญชีใหม่สร้างไว้ ไปที่บัญชีเดิม
- * แล้วลบบัญชีใหม่ทิ้ง บัญชีเดิมถูกเปิดใช้งาน
+ * แล้วซ่อนบัญชีใหม่ (flagDel = 1) บัญชีเดิมถูกเปิดใช้งาน
  */
 class UserMerger
 {
@@ -45,13 +45,21 @@ class UserMerger
             foreach (self::REFERENCES as [$table, $col]) {
                 $db->createCommand()->update('{{%' . $table . '}}', [$col => $into->id], [$col => $from->id])->execute();
             }
-            // สมาชิกโครงการ: ย้ายเฉพาะโครงการที่บัญชีเดิมยังไม่เป็นสมาชิก
+            // สมาชิกโครงการ (primary key = project_id + user_id ซ้ำไม่ได้ แม้แถวที่ลบแล้ว):
+            // 1) โครงการที่บัญชีเดิมเคยถูกนำออก แต่บัญชีใหม่ยังเป็นสมาชิก → นำแถวของบัญชีเดิมกลับมา
+            $db->createCommand(
+                'UPDATE {{%project_member}} t JOIN {{%project_member}} f ON f.project_id = t.project_id AND f.user_id = :from AND f.flagDel = 0'
+                . ' SET t.flagDel = 0 WHERE t.user_id = :into AND t.flagDel = 1',
+                [':into' => $into->id, ':from' => $from->id]
+            )->execute();
+            // 2) โครงการที่บัญชีเดิมไม่เคยอยู่ → ย้ายแถวมาเป็นของบัญชีเดิม
             $db->createCommand(
                 'UPDATE {{%project_member}} SET user_id = :into WHERE user_id = :from AND project_id NOT IN '
                 . '(SELECT project_id FROM (SELECT project_id FROM {{%project_member}} WHERE user_id = :into2) t)',
                 [':into' => $into->id, ':from' => $from->id, ':into2' => $into->id]
             )->execute();
-            $db->createCommand()->delete('{{%project_member}}', ['user_id' => $from->id])->execute();
+            // 3) ที่เหลือของบัญชีใหม่ (ซ้ำกับบัญชีเดิม) → ซ่อน
+            $db->createCommand()->update('{{%project_member}}', ['flagDel' => 1], ['user_id' => $from->id])->execute();
 
             $patch = ['status' => User::STATUS_ACTIVE, 'updated_at' => time()];
             if (!$into->email && $from->email) {
@@ -63,8 +71,8 @@ class UserMerger
             if ($from->last_login_at > $into->last_login_at) {
                 $patch['last_login_at'] = $from->last_login_at;
             }
-            // ลบบัญชีใหม่ก่อน เพื่อให้อีเมลไม่ชน unique index ตอนย้ายไปบัญชีเดิม
-            $db->createCommand()->delete('{{%user}}', ['id' => $from->id])->execute();
+            // ซ่อนบัญชีใหม่ (flagDel) ก่อน เพื่อให้อีเมลไม่ชน unique index ตอนย้ายไปบัญชีเดิม
+            $db->createCommand()->update('{{%user}}', ['flagDel' => 1, 'updated_at' => time()], ['id' => $from->id])->execute();
             $db->createCommand()->update('{{%user}}', $patch, ['id' => $into->id])->execute();
 
             $tx->commit();
