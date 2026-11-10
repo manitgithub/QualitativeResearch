@@ -14,8 +14,6 @@ use yii\web\IdentityInterface;
  * @property string|null $prefix
  * @property string $first_name
  * @property string|null $last_name
- * @property string|null $password_hash
- * @property string|null $legacy_password
  * @property string $auth_key
  * @property string $role
  * @property int $status
@@ -37,9 +35,6 @@ class User extends ActiveRecord implements IdentityInterface
     public const ROLE_ADMIN = 'admin';
     public const ROLE_USER = 'user';
 
-    /** @var string|null รหัสผ่านใหม่จากฟอร์ม */
-    public $newPassword;
-
     public static function tableName()
     {
         return '{{%user}}';
@@ -56,7 +51,7 @@ class User extends ActiveRecord implements IdentityInterface
             [['first_name'], 'required'],
             [['username', 'email', 'prefix', 'first_name', 'last_name'], 'trim'],
             [['username', 'email'], 'default', 'value' => null],
-            ['username', 'string', 'min' => 3, 'max' => 64],
+            ['username', 'string', 'max' => 64],   // ระบบเดิมมีชื่อผู้ใช้ 1–2 ตัวอักษร
             // อนุญาตอักษรไทย/สระ/วรรณยุกต์ และช่องว่าง เพื่อให้ชื่อผู้ใช้จากระบบเดิมใช้ต่อได้
             ['username', 'match', 'pattern' => '/^[\p{L}\p{M}\p{N}_.\-@ ]+$/u', 'message' => 'ใช้ได้เฉพาะตัวอักษร ตัวเลข ช่องว่าง และ _ . - @'],
             ['username', 'unique'],
@@ -66,7 +61,6 @@ class User extends ActiveRecord implements IdentityInterface
             [['first_name', 'last_name'], 'string', 'max' => 100],
             ['role', 'in', 'range' => array_keys(self::roleOptions())],
             ['status', 'in', 'range' => array_keys(self::statusOptions())],
-            ['newPassword', 'string', 'min' => 8],
         ];
     }
 
@@ -80,7 +74,6 @@ class User extends ActiveRecord implements IdentityInterface
             'last_name' => 'นามสกุล',
             'role' => 'สิทธิ์',
             'status' => 'สถานะ',
-            'newPassword' => 'รหัสผ่านใหม่',
             'last_login_at' => 'เข้าระบบล่าสุด',
             'created_at' => 'สร้างเมื่อ',
         ];
@@ -107,9 +100,6 @@ class User extends ActiveRecord implements IdentityInterface
         }
         if ($insert && !$this->auth_key) {
             $this->generateAuthKey();
-        }
-        if ($this->newPassword) {
-            $this->setPassword($this->newPassword);
         }
         return true;
     }
@@ -141,49 +131,19 @@ class User extends ActiveRecord implements IdentityInterface
         return $this->auth_key === $authKey;
     }
 
-    // ---------- รหัสผ่าน ----------
-
-    public static function findByLogin(string $login): ?self
-    {
-        return static::find()
-            ->where(['username' => $login])
-            ->orWhere(['email' => $login])
-            ->one();
-    }
+    // ---------- บัญชี ----------
 
     /**
-     * ตรวจรหัสผ่าน รองรับรหัสเดิมจากระบบเก่าที่เป็น plain text
-     * ถ้าตรงกับรหัสเดิม จะแปลงเป็น hash ทันทีและลบรหัสเดิมออก
+     * หาผู้ใช้จากชื่อผู้ใช้หรืออีเมล (ใช้กับคำสั่ง command line)
      */
-    public function validatePassword(string $password): bool
+    public static function findByLogin(string $login): ?self
     {
-        if ($this->password_hash) {
-            return Yii::$app->security->validatePassword($password, $this->password_hash);
-        }
-        if ($this->legacy_password !== null && $this->legacy_password !== ''
-            && hash_equals($this->legacy_password, $password)) {
-            $this->setPassword($password);
-            $this->legacy_password = null;
-            $this->save(false, ['password_hash', 'legacy_password', 'updated_at']);
-            return true;
-        }
-        return false;
-    }
-
-    public function setPassword(string $password): void
-    {
-        $this->password_hash = Yii::$app->security->generatePasswordHash($password);
-        $this->legacy_password = null;
+        return static::find()->where(['username' => $login])->orWhere(['email' => $login])->one();
     }
 
     public function generateAuthKey(): void
     {
         $this->auth_key = Yii::$app->security->generateRandomString();
-    }
-
-    public function hasPassword(): bool
-    {
-        return (bool)($this->password_hash || $this->legacy_password);
     }
 
     // ---------- ข้อมูลอื่น ----------

@@ -1,11 +1,12 @@
----
 # Codeception Test Suite Configuration
-
 # suite for unit (internal) tests.
-# RUN `build` COMMAND AFTER ADDING/REMOVING MODULES.
+# cleanup: false — tests reset the dedicated test DB themselves (tests/Support/Factory::reset),
+# and the code under test uses its own transactions, which must not be nested in Codeception's.
 actor: UnitTester
 modules:
   enabled:
     - Asserts
     - Yii2:
-      part: [orm, email, fixtures]
+        part: [orm, email, fixtures]
+        cleanup: false
+        transaction: false

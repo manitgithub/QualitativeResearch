@@ -10,7 +10,7 @@ cp config/db-local.example.php config/db-local.php          # แก้ค่า
 cp config/params-local.example.php config/params-local.php  # ใส่ cookieValidationKey, Google/LINE
 mysql -uroot -e "CREATE DATABASE qualitative CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 php yii migrate
-php yii user/admin admin you@example.com    # สร้างผู้ดูแลระบบ (ถามรหัสผ่าน)
+php yii user/admin you@gmail.com [username]  # ตั้งผู้ดูแลระบบด้วย Gmail (ใส่ username = ใช้บัญชีเดิม)
 php yii serve --port=8090                   # ทดสอบที่ http://localhost:8090
 ```
 
@@ -27,11 +27,11 @@ php yii legacy/import --fresh=1      # ลบข้อมูลวิจัย�
 ```
 
 - ทุกอย่างอยู่ใน transaction เดียว ถ้าผิดพลาดจะย้อนกลับทั้งหมด
-- ผู้ใช้เดิมเข้าระบบด้วยชื่อผู้ใช้/รหัสผ่านเดิมได้ รหัสผ่านจะถูกแปลงเป็น hash อัตโนมัติเมื่อเข้าระบบครั้งแรก
+- ไม่นำเข้ารหัสผ่านเดิม (ระบบใหม่เข้าได้เฉพาะ Google / LINE)
 - ข้อความที่ระบบเดิมเก็บเป็น HTML entity (`&#3612;`) จะถูกถอดกลับเป็นภาษาไทย
 - ชื่อผู้ใช้ที่ซ้ำกันในระบบเดิม (สมัครซ้ำ, ต่างกันแค่ตัวพิมพ์/วรรณยุกต์) จะรวมเป็นบัญชีเดียว โดยใช้แถวที่เข้าระบบบ่อยที่สุดเป็นหลัก
   ข้อมูลโครงการ/ทีม/ประวัติของทุกแถวจะย้ายมาอยู่ที่บัญชีนั้น และชื่อผู้ใช้ภาษาไทยใช้ต่อได้ตามเดิม
-- ถ้าผิดพลาด จะแสดงเฉพาะรหัส error ของฐานข้อมูล ไม่แสดงค่าที่ insert (เพราะมีรหัสผ่านเดิม)
+- ถ้าผิดพลาด จะแสดงเฉพาะรหัส error ของฐานข้อมูล ไม่แสดงค่าที่ insert (ข้อมูลส่วนบุคคล)
 - dump ควรทำด้วย `mysqldump` (phpMyAdmin ตัดกลางทางได้เมื่อไฟล์ใหญ่):
   `mysqldump -u<user> -p --default-character-set=utf8mb4 --single-transaction nurseapp > nurseapp.sql`
 
@@ -45,7 +45,7 @@ php yii legacy/import --fresh=1      # ลบข้อมูลวิจัย�
 | dt_interpret (channel 1–4, types 1–3) | interpretation (round 1–4, ipo input/process/output) |
 | dt_conceptual | concept |
 
-## เข้าระบบด้วย Google / LINE
+## เข้าระบบด้วย Gmail / LINE (ไม่มีการเข้าด้วยรหัสผ่าน)
 
 ใส่ค่าใน `config/params-local.php` (ปุ่มจะแสดงในหน้า login เมื่อมีค่า)
 
@@ -53,11 +53,21 @@ php yii legacy/import --fresh=1      # ลบข้อมูลวิจัย�
 - **LINE**: LINE Developers → LINE Login channel → Callback URL `https://<host>/site/auth?authclient=line`
   ถ้าต้องการให้จับคู่บัญชีด้วยอีเมล ให้ขอสิทธิ์ *Email address permission* ใน channel
 
-การจับคู่บัญชี:
+เริ่มใช้งานครั้งแรก (ยังไม่มีใครเข้าระบบได้จนกว่าจะมีผู้ดูแล):
+
+```bash
+php yii user/admin manit@gmail.com manit     # ใส่ Gmail ให้บัญชีเดิม "manit" และตั้งเป็นผู้ดูแล
+php yii user/email somsri somsri@gmail.com   # (ถ้ารู้ Gmail ของผู้ใช้เดิม) ใส่ไว้ล่วงหน้า
+```
+
+การจับคู่บัญชีเมื่อเข้าระบบ:
 1. เคยผูกไว้แล้ว → เข้าระบบ
-2. อีเมล (ที่ยืนยันแล้ว) ตรงกับผู้ใช้ที่มีอยู่ → ผูกให้อัตโนมัติ — ผู้ดูแลใส่อีเมลให้ผู้ใช้เดิมก่อนได้ที่เมนู "ผู้ใช้"
-3. ไม่พบ → สร้างบัญชีใหม่สถานะ "รออนุมัติ" (ปิดได้ที่ `socialSignupRequiresApproval`)
-4. ผู้ใช้ผูก/ยกเลิกบัญชีเพิ่มเองได้ที่ "ข้อมูลส่วนตัว" (อีเมลแก้ได้เฉพาะผู้ดูแลระบบ)
+2. อีเมล (ที่ยืนยันแล้ว) ตรงกับบัญชีที่มีอยู่ → ผูกให้อัตโนมัติและเข้าได้ทันที (ผู้ดูแลใส่อีเมลไว้ล่วงหน้าแล้ว)
+3. ไม่พบ → สร้างคำขอสถานะ "รออนุมัติ" — ผู้ดูแลเปิดเมนู "ผู้ใช้" แล้วเลือก
+   - **รวมกับบัญชีเดิม** (ระบบเสนอชื่อที่ใกล้เคียง) → คนนั้นได้โครงการเดิมของตัวเองคืน
+   - **อนุมัติเป็นผู้ใช้ใหม่** หรือ **ปฏิเสธ**
+4. ผู้ใช้ผูก LINE/Google เพิ่มได้ที่ "ข้อมูลส่วนตัว"; ผู้ดูแลยกเลิกการผูกที่ผิดคนได้ที่หน้าผู้ใช้
+5. อีเมลแก้ได้เฉพาะผู้ดูแลระบบ (ใช้จับคู่บัญชีอัตโนมัติ)
 
 ## สิทธิ์
 

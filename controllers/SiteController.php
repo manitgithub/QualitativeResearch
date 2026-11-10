@@ -3,7 +3,6 @@
 namespace app\controllers;
 
 use app\components\AuthHandler;
-use app\models\LoginForm;
 use app\models\Project;
 use Yii;
 use yii\authclient\AuthAction;
@@ -99,20 +98,16 @@ class SiteController extends Controller
         ]);
     }
 
+    /**
+     * หน้าเข้าระบบ: Google หรือ LINE เท่านั้น (ไม่มีการเข้าด้วยรหัสผ่าน)
+     */
     public function actionLogin()
     {
         if (!Yii::$app->user->isGuest) {
             return $this->goHome();
         }
         $this->layout = 'blank';
-
-        $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
-        }
-        $model->password = '';
-
-        return $this->render('login', ['model' => $model]);
+        return $this->render('login', ['clients' => Yii::$app->authClientCollection->getClients()]);
     }
 
     public function actionLogout()

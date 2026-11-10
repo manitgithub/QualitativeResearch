@@ -2,7 +2,6 @@
 
 /** @var yii\web\View $this */
 /** @var app\models\User $profile */
-/** @var yii\base\DynamicModel $pwd */
 /** @var yii\authclient\ClientInterface[] $clients */
 
 use app\models\UserAuth;
@@ -25,7 +24,12 @@ $this->params['breadcrumbs'][] = $this->title;
                     <div class="col-sm-3"><?= $form->field($profile, 'prefix') ?></div>
                     <div class="col-sm-4"><?= $form->field($profile, 'first_name') ?></div>
                     <div class="col-sm-5"><?= $form->field($profile, 'last_name') ?></div>
-                    <div class="col-sm-6"><?= $form->field($profile, 'username')->hint('ใช้เข้าระบบด้วยรหัสผ่าน') ?></div>
+                    <?php if ($profile->username): ?>
+                        <div class="col-sm-6">
+                            <label class="form-label">ชื่อผู้ใช้ระบบเดิม</label>
+                            <input class="form-control" value="<?= Html::encode($profile->username) ?>" disabled>
+                        </div>
+                    <?php endif ?>
                     <div class="col-sm-6">
                         <label class="form-label">อีเมล</label>
                         <input class="form-control" value="<?= Html::encode($profile->email) ?>" disabled>
@@ -36,25 +40,11 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?php ActiveForm::end(); ?>
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-header"><?= $profile->hasPassword() ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' ?></div>
-            <div class="card-body">
-                <?php $form = ActiveForm::begin(['enableClientValidation' => false]); ?>
-                <?php if ($profile->hasPassword()): ?>
-                    <?= $form->field($pwd, 'current')->passwordInput(['autocomplete' => 'current-password']) ?>
-                <?php endif ?>
-                <?= $form->field($pwd, 'password')->passwordInput(['autocomplete' => 'new-password'])->hint('อย่างน้อย 8 ตัวอักษร') ?>
-                <?= $form->field($pwd, 'confirm')->passwordInput(['autocomplete' => 'new-password']) ?>
-                <?= Html::submitButton('บันทึกรหัสผ่าน', ['class' => 'btn btn-outline-primary']) ?>
-                <?php ActiveForm::end(); ?>
-            </div>
-        </div>
     </div>
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">เข้าระบบด้วยบัญชีอื่น</div>
+            <div class="card-header">บัญชีที่ใช้เข้าระบบ</div>
             <ul class="list-group list-group-flush">
                 <?php foreach (UserAuth::sourceLabels() as $source => $label): ?>
                     <?php $auth = $profile->getAuthBySource($source); ?>

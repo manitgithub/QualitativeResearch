@@ -1,7 +1,8 @@
 <?php
 
 $db = require __DIR__ . '/db.php';
-// test database! Important not to run tests on production or development databases
-$db['dsn'] = 'mysql:host=localhost;dbname=yii2basic_test';
+// ฐานข้อมูลทดสอบแยก — ห้ามชี้ไปที่ฐานข้อมูลจริง (ทุก test จะล้างข้อมูลในตาราง)
+$db['dsn'] = 'mysql:host=127.0.0.1;dbname=qualitative_test';
+$db['enableSchemaCache'] = false;
 
 return $db;

@@ -111,7 +111,7 @@ class LegacyController extends Controller
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
-            // ไม่แสดง SQL ที่ล้มเหลว เพราะอาจมีรหัสผ่านเดิม (plain text) อยู่ในค่าที่ insert
+            // ไม่แสดง SQL ที่ล้มเหลว (ค่าที่ insert เป็นข้อมูลส่วนบุคคลของผู้ใช้และผู้ให้ข้อมูล)
             $msg = $e instanceof \yii\db\Exception
                 ? 'SQLSTATE ' . implode(' ', array_filter((array)$e->errorInfo, 'is_scalar'))
                 : strtok($e->getMessage(), "\n");
@@ -137,7 +137,7 @@ class LegacyController extends Controller
                      'informant_group', 'project', 'collection_method'] as $t) {
             $this->db->createCommand()->delete('{{%' . $t . '}}', ['not', ['legacy_id' => null]])->execute();
         }
-        // บัญชีผู้ใช้ไม่ถูกลบ: เก็บรหัสผ่านใหม่และบัญชี Google/LINE ที่ผูกไว้แล้ว (จับคู่ใหม่ด้วย legacy_id)
+        // บัญชีผู้ใช้ไม่ถูกลบ: เก็บอีเมลและบัญชี Google/LINE ที่ผูกไว้แล้ว (จับคู่ใหม่ด้วย legacy_id)
         $this->db->createCommand()->delete('{{%login_log}}', ['method' => 'legacy'])->execute();
     }
 
@@ -296,7 +296,6 @@ class LegacyController extends Controller
                 'prefix' => $prefix !== null && !ctype_digit($prefix) ? mb_substr($prefix, 0, 50) : null,
                 'first_name' => mb_substr($this->str($r['Name'] ?? null) ?? ($username ?? 'ผู้ใช้'), 0, 100),
                 'last_name' => mb_substr((string)$this->str($r['Surname'] ?? null), 0, 100) ?: null,
-                'legacy_password' => $this->str($r['PWD'] ?? null),
                 'auth_key' => Yii::$app->security->generateRandomString(),
                 'role' => (string)($r['Group'] ?? '') === '1' ? User::ROLE_ADMIN : User::ROLE_USER,
                 'status' => (string)($r['Stats'] ?? '1') === '0' ? User::STATUS_INACTIVE : User::STATUS_ACTIVE,

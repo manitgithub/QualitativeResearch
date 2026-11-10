@@ -199,8 +199,13 @@ class ImportForm extends Model
         if ($ext === 'csv') {
             $content = file_get_contents($path);
             // รองรับไฟล์ CSV ที่บันทึกจาก Excel ภาษาไทย (TIS-620/Windows-874)
+            // (mbstring ไม่รองรับ Windows-874 จึงใช้ iconv)
             if (!mb_check_encoding($content, 'UTF-8')) {
-                $content = mb_convert_encoding($content, 'UTF-8', 'Windows-874');
+                $converted = @iconv('CP874', 'UTF-8//IGNORE', $content);
+                if ($converted === false) {
+                    throw new \RuntimeException('ไฟล์ไม่ใช่ UTF-8 และแปลงจาก Windows-874 ไม่ได้ กรุณาบันทึกเป็น CSV UTF-8');
+                }
+                $content = $converted;
             }
             $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
             $rows = [];

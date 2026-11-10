@@ -16,7 +16,9 @@ return [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
     ],
-    'language' => 'en-US',
+    'name' => $params['appName'],
+    'language' => 'th-TH',
+    'timeZone' => 'Asia/Bangkok',
     'components' => [
         'db' => $db,
         'mailer' => [
@@ -33,7 +35,17 @@ return [
         ],
         'user' => [
             'identityClass' => \app\models\User::class,
+            'loginUrl' => ['site/login'],
         ],
+        'authClientCollection' => [
+            'class' => \yii\authclient\Collection::class,
+            'clients' => [
+                'google' => ['class' => \yii\authclient\clients\Google::class, 'clientId' => 'test-google', 'clientSecret' => 'x'],
+                'line' => ['class' => \app\components\authclient\Line::class, 'clientId' => '1234567890', 'clientSecret' => 'x'],
+            ],
+        ],
+        'formatter' => ['locale' => 'th-TH', 'defaultTimeZone' => 'Asia/Bangkok'],
+        'cache' => ['class' => \yii\caching\ArrayCache::class],
         'request' => [
             'cookieValidationKey' => 'test',
             'enableCsrfValidation' => false,

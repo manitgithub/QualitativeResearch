@@ -18,6 +18,10 @@ class ExcelExporter
 {
     public static function send(string $filename, array $sheets): \yii\web\Response
     {
+        // รายงานของโครงการใหญ่ (ข้อความสัมภาษณ์ยาวหลายพันแถว) ใช้หน่วยความจำมากกว่าค่าเริ่มต้น 128M
+        if (self::memoryLimitBytes() < 512 * 1024 * 1024) {
+            ini_set('memory_limit', '512M');
+        }
         $ss = new Spreadsheet();
         $ss->removeSheetByIndex(0);
 
@@ -59,16 +63,30 @@ class ExcelExporter
         $ss->setActiveSheetIndex(0);
 
         $path = Yii::getAlias('@runtime') . '/export-' . Yii::$app->security->generateRandomString(8) . '.xlsx';
-        IOFactory::createWriter($ss, 'Xlsx')->save($path);
+        $writer = IOFactory::createWriter($ss, 'Xlsx');
+        $writer->setPreCalculateFormulas(false);
+        $writer->save($path);
+        $ss->disconnectWorksheets();
 
         $response = Yii::$app->response->sendFile($path, $filename . '.xlsx');
         $response->on(\yii\web\Response::EVENT_AFTER_SEND, fn() => @unlink($path));
         return $response;
     }
 
+    private static function memoryLimitBytes(): int
+    {
+        $v = trim((string)ini_get('memory_limit'));
+        if ($v === '-1') {
+            return PHP_INT_MAX;
+        }
+        $n = (int)$v;
+        return match (strtolower(substr($v, -1))) { 'g' => $n << 30, 'm' => $n << 20, 'k' => $n << 10, default => $n };
+    }
+
     private static function safeSheetName(string $name, array &$used): string
     {
-        $name = trim(preg_replace('/[\\\\\/\?\*\[\]:]/u', ' ', $name)) ?: 'Sheet';
+        $name = preg_replace('/[\\\\\/\?\*\[\]:]/u', ' ', $name);
+        $name = trim(preg_replace('/\s+/u', ' ', $name)) ?: 'Sheet';   // tabs/newlines from question titles
         $name = mb_substr($name, 0, 28);
         $base = $name;
         $i = 2;

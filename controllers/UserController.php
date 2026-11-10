@@ -2,13 +2,17 @@
 
 namespace app\controllers;
 
+use app\components\UserMerger;
 use app\models\LoginLog;
 use app\models\User;
+use app\models\UserAuth;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
+use yii\base\UserException;
+use yii\web\BadRequestHttpException;
 use yii\web\NotFoundHttpException;
 
 /**
@@ -29,7 +33,7 @@ class UserController extends Controller
             ],
             'verbs' => [
                 'class' => VerbFilter::class,
-                'actions' => ['approve' => ['POST'], 'unlink' => ['POST']],
+                'actions' => ['approve' => ['POST'], 'reject' => ['POST'], 'unlink' => ['POST']],
             ],
         ];
     }
@@ -48,8 +52,17 @@ class UserController extends Controller
             'sort' => ['defaultOrder' => ['status' => SORT_ASC, 'first_name' => SORT_ASC],
                 'attributes' => ['first_name', 'username', 'email', 'status', 'last_login_at', 'created_at']],
         ]);
-        $pending = User::find()->where(['status' => User::STATUS_PENDING])->count();
-        return $this->render('index', ['provider' => $provider, 'status' => $status, 'q' => $q, 'pending' => $pending]);
+        $pendingUsers = User::find()->with('auths')->where(['status' => User::STATUS_PENDING])->orderBy('created_at')->all();
+        $mergeTargets = [];
+        if ($pendingUsers) {
+            foreach (User::find()->where(['<>', 'status', User::STATUS_PENDING])->orderBy('first_name')->all() as $u) {
+                $mergeTargets[$u->id] = $u->getFullName() . ($u->username ? " ({$u->username})" : '') . ($u->email ? " · {$u->email}" : '');
+            }
+        }
+        return $this->render('index', [
+            'provider' => $provider, 'status' => $status, 'q' => $q,
+            'pendingUsers' => $pendingUsers, 'mergeTargets' => $mergeTargets,
+        ]);
     }
 
     public function actionCreate()
@@ -80,12 +93,58 @@ class UserController extends Controller
         return $this->render('form', ['model' => $model, 'logs' => $logs]);
     }
 
+    /**
+     * อนุมัติบัญชีที่สมัครด้วย Google/LINE
+     * POST mergeInto = id บัญชีเดิม → รวมเข้ากับบัญชีนั้น (ได้โครงการเดิมคืน); ว่าง = เปิดเป็นผู้ใช้ใหม่
+     */
     public function actionApprove($id)
     {
         $model = $this->findModel($id);
-        $model->updateAttributes(['status' => User::STATUS_ACTIVE]);
-        Yii::$app->session->setFlash('success', 'อนุมัติ ' . $model->getFullName() . ' แล้ว');
+        $intoId = (int)Yii::$app->request->post('mergeInto');
+        if ($intoId) {
+            if ($model->status !== User::STATUS_PENDING) {
+                throw new BadRequestHttpException('รวมได้เฉพาะบัญชีที่รออนุมัติ');
+            }
+            $into = $this->findModel($intoId);
+            try {
+                (new UserMerger())->merge($model, $into);
+            } catch (UserException $e) {
+                Yii::$app->session->setFlash('error', $e->getMessage());
+                return $this->redirect(['index']);
+            }
+            Yii::$app->session->setFlash('success', 'อนุมัติและรวมเข้ากับบัญชีเดิมของ ' . $into->getFullName() . ' แล้ว');
+        } else {
+            $model->updateAttributes(['status' => User::STATUS_ACTIVE]);
+            Yii::$app->session->setFlash('success', 'อนุมัติ ' . $model->getFullName() . ' เป็นผู้ใช้ใหม่แล้ว');
+        }
         return $this->redirect(['index']);
+    }
+
+    /**
+     * ปฏิเสธคำขอ: ลบบัญชีที่รออนุมัติ (และการผูก Google/LINE ของบัญชีนั้น)
+     */
+    public function actionReject($id)
+    {
+        $model = $this->findModel($id);
+        if ($model->status !== User::STATUS_PENDING) {
+            throw new BadRequestHttpException('ปฏิเสธได้เฉพาะบัญชีที่รออนุมัติ');
+        }
+        $model->delete();
+        Yii::$app->session->setFlash('success', 'ปฏิเสธคำขอของ ' . $model->getFullName() . ' แล้ว');
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * ยกเลิกการผูก Google/LINE ของผู้ใช้ (เช่น ผูกผิดคน) — ผู้ใช้ต้อง login ใหม่และรออนุมัติ
+     */
+    public function actionUnlink($id, $source)
+    {
+        $model = $this->findModel($id);
+        UserAuth::deleteAll(['user_id' => $model->id, 'source' => $source]);
+        $model->generateAuthKey();      // ตัด session "จดจำการเข้าระบบ" เดิม
+        $model->save(false, ['auth_key', 'updated_at']);
+        Yii::$app->session->setFlash('success', 'ยกเลิกการผูกบัญชีแล้ว');
+        return $this->redirect(['update', 'id' => $model->id]);
     }
 
     protected function findModel($id): User

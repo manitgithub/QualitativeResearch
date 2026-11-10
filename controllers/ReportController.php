@@ -138,7 +138,6 @@ class ReportController extends ProjectScopedController
         };
 
         if ($export) {
-            ini_set('memory_limit', '512M');
             $rows = [];
             foreach ($query->batch(1000) as $chunk) {
                 $matrix = $matrixFor(ArrayHelper::getColumn($chunk, 'id'));
